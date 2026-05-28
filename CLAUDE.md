@@ -220,7 +220,7 @@ Tables (all prefixed `domino_`): `users`, `items`, `otps`, `sessions`, `messages
 | Service | Platform | URL |
 |---|---|---|
 | Backend | Vercel (Python serverless) | `https://domino-back-end.vercel.app` |
-| Frontend | Vercel (Next.js) | `https://domino-*.vercel.app` |
+| Frontend | Vercel (Next.js) | `https://domino.fyi` |
 | Database | Supabase PostgreSQL | — |
 | Media storage | Google Cloud Storage | — |
 

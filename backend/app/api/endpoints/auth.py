@@ -141,7 +141,7 @@ async def create_session_for_phone(phone: str, db: AsyncSession) -> tuple[str, b
 
 
 def build_magic_link(session_token: str) -> str:
-    base = (settings.FRONTEND_URL or "https://domino.app").rstrip("/")
+    base = (settings.FRONTEND_URL or "https://domino.fyi").rstrip("/")
     return f"{base}/dashboard?token={session_token}"
 
 

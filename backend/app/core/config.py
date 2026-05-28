@@ -36,11 +36,11 @@ class Settings(BaseSettings):
     # CORS
     BACKEND_CORS_ORIGINS: list[str] = [
         "http://localhost:3000",
-        "https://domino.app",
-        "https://www.domino.app",
+        "https://domino.fyi",
+        "https://www.domino.fyi",
     ]
     FRONTEND_URL: Optional[str] = None
-    BACKEND_CORS_ORIGIN_REGEX: Optional[str] = r"^https://domino[a-z0-9\-]*\.vercel\.app$"
+    BACKEND_CORS_ORIGIN_REGEX: Optional[str] = r"^https://(domino\.fyi|domino[a-z0-9\-]*\.vercel\.app)$"
 
     # Security
     SECRET_KEY: str = "your-secret-key-change-in-production"
