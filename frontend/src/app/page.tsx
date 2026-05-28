@@ -1,38 +1,199 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
 import { useDominoAuth } from '@/features/domino/domino-auth-context';
 import { WaitlistModal } from '@/components/WaitlistModal';
 
-const DISPLAY_NUMBER = '(650) 449-4254';
+const SAMPLE_CARDS = [
+  {
+    id: '1',
+    kind: 'link',
+    color: 'b',
+    title: 'The Unreasonable Effectiveness of Just Showing Up',
+    domain: 'paulgraham.com',
+    snippet: 'Consistency compounds in ways that talent alone never can. The people who win long-term are usually not the most gifted — they are the ones who kept going.',
+    time: '2h ago',
+    starred: true,
+    category: 'productivity',
+  },
+  {
+    id: '2',
+    kind: 'note',
+    color: 'y',
+    title: 'q3 product ideas',
+    domain: null,
+    snippet: 'voice-to-summary on ios, browser ext for one-click save, weekly digest redesign, graph view for connected notes',
+    time: 'today',
+    starred: false,
+    category: null,
+  },
+  {
+    id: '3',
+    kind: 'link',
+    color: 'm',
+    title: 'How Compound Interest Actually Works',
+    domain: 'investopedia.com',
+    snippet: 'The key insight most people miss: the gains in year 20 are larger than the total gains of years 1–10 combined.',
+    time: 'yesterday',
+    starred: false,
+    category: 'finance',
+  },
+  {
+    id: '4',
+    kind: 'note',
+    color: 'p',
+    title: 'book recs from twitter thread',
+    domain: null,
+    snippet: 'The Almanack of Naval Ravikant · Thinking in Systems · The Mom Test · Shape Up by Basecamp',
+    time: '3d ago',
+    starred: true,
+    category: null,
+  },
+];
 
-function PipHalf({ pattern }: { pattern: 1 | 2 | 3 | 4 | 5 | 6 }) {
-  return (
-    <div className={`d-half p${pattern}`}>
-      {Array.from({ length: 9 }, (_, i) => (
-        <div key={i} className={`pip pos-${i + 1}`} />
-      ))}
-    </div>
-  );
-}
+const CARD_COLORS: Record<string, string> = {
+  b: 'oklch(0.94 0.04 230)',
+  y: 'oklch(0.965 0.045 100)',
+  m: 'oklch(0.95 0.045 165)',
+  p: 'oklch(0.93 0.035 350)',
+};
 
-function DominoTile({
-  top,
-  bottom,
-}: {
-  top: 1 | 2 | 3 | 4 | 5 | 6;
-  bottom: 1 | 2 | 3 | 4 | 5 | 6;
-}) {
+function PhoneMockup() {
+  const [activeTab, setActiveTab] = useState('saved');
+  const [activeFilter, setActiveFilter] = useState('all');
+
   return (
-    <div className="cell black">
-      <div className="domino domino-anim">
-        <PipHalf pattern={top} />
-        <div className="d-line" />
-        <PipHalf pattern={bottom} />
+    <div style={{
+      width: '100%',
+      maxWidth: 320,
+      margin: '0 auto',
+      background: 'var(--bg)',
+      borderRadius: 40,
+      border: '1px solid var(--hairline)',
+      boxShadow: '0 32px 80px oklch(0 0 0 / 0.18), 0 8px 20px oklch(0 0 0 / 0.08), inset 0 1px 0 oklch(1 0 0 / 0.6)',
+      overflow: 'hidden',
+      position: 'relative',
+      aspectRatio: '9/19',
+      display: 'flex',
+      flexDirection: 'column',
+    }}>
+      {/* status bar */}
+      <div style={{ height: 44, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px 0 24px' }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>9:41</span>
+        <div style={{ width: 120, height: 28, background: 'var(--ink)', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#1A1208', border: '2px solid oklch(0.4 0 0)' }} />
+        </div>
+        <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+          <svg width="15" height="11" viewBox="0 0 15 11" fill="var(--ink)"><rect x="0" y="4" width="3" height="7" rx="1"/><rect x="4" y="2.5" width="3" height="8.5" rx="1"/><rect x="8" y="1" width="3" height="10" rx="1"/><rect x="12" y="0" width="3" height="11" rx="1"/></svg>
+          <svg width="16" height="12" viewBox="0 0 24 12" fill="none" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round"><rect x="1" y="1" width="18" height="10" rx="2"/><path d="M21 4v4" strokeWidth="3" strokeLinecap="round"/><rect x="2.5" y="2.5" width="14" height="7" rx="1" fill="var(--ink)" stroke="none"/></svg>
+        </div>
       </div>
+
+      {/* dot-grid texture */}
+      <div className="dn-grid-bg" style={{ borderRadius: 0 }} />
+
+      {/* app content */}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+
+        {/* header */}
+        <div style={{ padding: '10px 16px 0', flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 10 }}>
+            <div className="dn-wordmark" style={{ fontSize: 24 }}>domino</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--ink-3)', fontSize: 10 }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--domino-accent)', boxShadow: '0 0 0 2px oklch(0.66 0.19 35 / 0.2)' }} />
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>24 saved · 2 today</span>
+            </div>
+          </div>
+
+          {/* search bar */}
+          <div className="dn-search-bar" style={{ height: 36, marginBottom: 10, padding: '0 12px 0 10px' }}>
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="var(--ink-4)" strokeWidth="2" strokeLinecap="round"><circle cx="9" cy="9" r="6"/><path d="m15 15 3 3"/></svg>
+            <span style={{ flex: 1, fontSize: 12, color: 'var(--ink-4)' }}>search everything…</span>
+          </div>
+
+          {/* section label */}
+          <div style={{ fontFamily: 'var(--font-serif)', fontSize: 13, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 8, letterSpacing: '-0.01em' }}>my folders</div>
+
+          {/* filter chips */}
+          <div className="dn-hscroll" style={{ paddingBottom: 10, gap: 6, marginRight: -16 }}>
+            {(['all', 'links', 'notes', 'pdfs'] as const).map(k => (
+              <button
+                key={k}
+                className={`dn-chip${activeFilter === k ? ' active' : ''}`}
+                style={{ height: 26, padding: '0 10px', fontSize: 11 }}
+                onClick={() => setActiveFilter(k)}
+              >
+                {k}
+              </button>
+            ))}
+            <div style={{ flexShrink: 0, width: 6 }} />
+          </div>
+        </div>
+
+        {/* cards */}
+        <div style={{ flex: 1, overflow: 'auto', padding: '4px 16px 80px' }} className="scrollbar-hide">
+          <div className="dn-masonry" style={{ columnGap: 8 }}>
+            {SAMPLE_CARDS.map(card => (
+              <div key={card.id} className="dn-card" style={{ background: CARD_COLORS[card.color], marginBottom: 8, padding: 10, borderRadius: 14, gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 5, background: 'oklch(1 0 0 / 0.7)', color: 'var(--ink-2)' }}>
+                    {card.kind}
+                  </span>
+                  {card.starred && (
+                    <svg width="11" height="11" viewBox="0 0 20 20" fill="oklch(0.82 0.16 85)" stroke="none"><path d="M10 1l2.4 6.3H19l-5.4 4 2 6.3L10 14l-5.6 3.6 2-6.3L1 7.3h6.6z"/></svg>
+                  )}
+                </div>
+                <div style={{ fontFamily: 'var(--font-serif)', fontWeight: 600, fontSize: 12, lineHeight: 1.3, letterSpacing: '-0.01em', color: 'var(--ink)' }}>
+                  {card.title}
+                </div>
+                <div style={{ fontSize: 10, lineHeight: 1.45, color: 'var(--ink-2)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  {card.snippet}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 9, color: 'var(--ink-4)' }}>{card.time}</span>
+                  {card.domain && <span style={{ fontSize: 9, color: 'var(--ink-3)', borderBottom: '1px dashed oklch(0 0 0 / 0.2)' }}>{card.domain}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* FAB */}
+        <div style={{
+          position: 'absolute', right: 14, bottom: 68,
+          width: 44, height: 44, borderRadius: 14,
+          background: 'var(--domino-accent)', color: 'white',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 4px 16px oklch(0.66 0.19 35 / 0.45)',
+          zIndex: 10,
+        }}>
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><path d="M10 4v12M4 10h12"/></svg>
+        </div>
+      </div>
+
+      {/* bottom nav */}
+      <nav className="dn-bottom-nav" style={{ gridTemplateColumns: 'repeat(4,1fr)', padding: '6px 4px 16px' }}>
+        {([
+          { id: 'saved', label: 'saved', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg> },
+          { id: 'map', label: 'map', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg> },
+          { id: 'discover', label: 'discover', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg> },
+          { id: 'me', label: 'me', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+        ]).map(({ id, label, icon }) => (
+          <button
+            key={id}
+            className={`dn-tab${activeTab === id ? ' active' : ''}`}
+            style={{ fontSize: 10, gap: 2, padding: '4px 0' }}
+            onClick={() => setActiveTab(id)}
+          >
+            {icon}
+            <span>{label}</span>
+            {activeTab === id && <div className="dn-tab-dot" />}
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }
@@ -40,52 +201,11 @@ function DominoTile({
 export default function DominoLandingPage() {
   const { sessionToken, isLoading } = useDominoAuth();
   const router = useRouter();
-  const gridRef = useRef<HTMLDivElement>(null);
   const [showWaitlist, setShowWaitlist] = useState(false);
 
   useEffect(() => {
     if (!isLoading && sessionToken) router.replace('/dashboard');
   }, [isLoading, sessionToken, router]);
-
-  useEffect(() => {
-    if (isLoading) return;
-    const grid = gridRef.current;
-    if (!grid) return;
-    const dominos = grid.querySelectorAll<HTMLElement>('.domino-anim');
-    let isAnimating = false;
-
-    const triggerChain = () => {
-      if (isAnimating) return;
-      isAnimating = true;
-      dominos.forEach((d) => {
-        d.classList.remove('fall', 'rise');
-        void d.offsetWidth;
-      });
-      dominos.forEach((d, i) => {
-        setTimeout(() => d.classList.add('fall'), i * 100);
-      });
-      setTimeout(() => {
-        dominos.forEach((d, i) => {
-          setTimeout(() => {
-            d.classList.remove('fall');
-            d.classList.add('rise');
-          }, i * 80);
-        });
-        setTimeout(() => {
-          isAnimating = false;
-        }, dominos.length * 80 + 500);
-      }, dominos.length * 100 + 800);
-    };
-
-    grid.addEventListener('click', triggerChain);
-    const t = setTimeout(triggerChain, 1000);
-    const interval = setInterval(triggerChain, 4000);
-    return () => {
-      grid.removeEventListener('click', triggerChain);
-      clearTimeout(t);
-      clearInterval(interval);
-    };
-  }, [isLoading]);
 
   if (isLoading) {
     return (
@@ -97,176 +217,6 @@ export default function DominoLandingPage() {
 
   return (
     <main className="min-h-screen bg-background bg-check-grid text-[#1A1208] font-figtree lowercase overflow-x-hidden leading-snug relative flex flex-col">
-
-      <style>{`
-        .page-domino { max-width: 600px; margin: 0 auto; padding: 0 20px 60px; position: relative; z-index: 1; flex: 1; }
-        .hero-domino { margin-bottom: 32px; }
-        .headline-domino {
-          font-size: clamp(28px, 7vw, 42px);
-          font-weight: 900;
-          line-height: 1.1;
-          letter-spacing: -0.03em;
-          margin-bottom: 16px;
-          color: #1A1208;
-        }
-        .headline-domino em {
-          font-style: normal;
-          font-size: clamp(15px, 3.8vw, 20px);
-          font-weight: 400;
-          color: #1A1208;
-          display: block;
-          margin-top: 10px;
-        }
-        .cta-link-domino {
-          font-size: 18px;
-          font-weight: 700;
-          color: #ED4715;
-          text-decoration: none;
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          border-bottom: 2px solid #ED4715;
-          padding-bottom: 2px;
-          transition: gap 0.2s;
-        }
-        .cta-link-domino:hover { gap: 12px; }
-        .grid-domino {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 6px;
-          width: 100%;
-          margin-top: 20px;
-          cursor: pointer;
-        }
-        .cell {
-          aspect-ratio: 1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          position: relative;
-          border-radius: 10px;
-          overflow: hidden;
-          transition: transform 0.2s ease;
-        }
-        .cell.black {
-          background: linear-gradient(145deg, #201810, #1A1208);
-          perspective: 500px;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.04);
-        }
-        .cell.cream {
-          background: linear-gradient(145deg, #EFEBE0, #E8E4D8);
-          border: 1px solid rgba(209,205,192,0.4);
-          box-shadow: 0 2px 12px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.7);
-        }
-        .cell.orange {
-          background: linear-gradient(145deg, #F45A20, #ED4715, #D93D0E);
-          grid-column: span 2;
-          box-shadow: 0 6px 24px rgba(237,71,21,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
-        }
-        .cell.white {
-          background: linear-gradient(145deg, #FFFFFF, #FAFAF8);
-          border: 1px solid rgba(209,205,192,0.35);
-          box-shadow: 0 2px 12px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.9);
-        }
-        .domino {
-          width: 36%;
-          height: 76%;
-          background: linear-gradient(160deg, #FFFDF9, #FFFCF7, #F8F5EF);
-          border-radius: 5px;
-          display: flex;
-          flex-direction: column;
-          box-shadow: 2px 4px 8px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.8);
-          position: relative;
-          transform-origin: bottom center;
-          transition: transform 0.1s;
-        }
-        .cell.cream .domino {
-          background: linear-gradient(160deg, #201810, #1A1208);
-          box-shadow: 2px 4px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.06);
-        }
-        .d-line {
-          height: 1.5px;
-          width: 65%;
-          background: rgba(0,0,0,0.1);
-          margin: auto;
-        }
-        .cell.cream .d-line { background: rgba(255,255,255,0.15); }
-        .d-half {
-          height: 48%;
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          grid-template-rows: repeat(3, 1fr);
-          padding: 14%;
-          align-items: center;
-          justify-items: center;
-        }
-        .pip {
-          width: 85%;
-          height: 85%;
-          background: #1A1208;
-          border-radius: 50%;
-          visibility: hidden;
-        }
-        .cell.cream .pip { background: #F2EFE8; }
-        .p1 .pos-5 { visibility: visible; }
-        .p2 .pos-1, .p2 .pos-9 { visibility: visible; }
-        .p3 .pos-1, .p3 .pos-5, .p3 .pos-9 { visibility: visible; }
-        .p4 .pos-1, .p4 .pos-3, .p4 .pos-7, .p4 .pos-9 { visibility: visible; }
-        .p5 .pos-1, .p5 .pos-3, .p5 .pos-5, .p5 .pos-7, .p5 .pos-9 { visibility: visible; }
-        .p6 .pos-1, .p6 .pos-3, .p6 .pos-4, .p6 .pos-6, .p6 .pos-7, .p6 .pos-9 { visibility: visible; }
-        .text-cell {
-          flex-direction: column;
-          align-items: flex-start;
-          justify-content: flex-end;
-          padding: clamp(6px, 2vw, 12px);
-          aspect-ratio: auto;
-          min-height: 0;
-        }
-        .cell-label {
-          font-size: clamp(8px, 2vw, 11px);
-          font-weight: 800;
-          letter-spacing: 0.05em;
-          color: #9A9080;
-          margin-bottom: 2px;
-        }
-        .cell-text {
-          font-size: clamp(10px, 2.8vw, 15px);
-          font-weight: 700;
-          line-height: 1.2;
-          color: #1A1208;
-          overflow-wrap: break-word;
-          word-break: break-word;
-        }
-        .cell.black.text-cell .cell-label { color: rgba(255,255,255,0.5); }
-        .cell.black.text-cell .cell-text { color: #FFFFFF; }
-        .cell.orange .cell-label { color: rgba(255,255,255,0.7); }
-        .cell.orange .cell-text { color: #FFFFFF; font-size: clamp(14px, 3.8vw, 20px); }
-        .phone-cell {
-          text-decoration: none;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          width: 100%;
-          height: 100%;
-          gap: 4px;
-        }
-        .phone-num { font-size: clamp(16px, 4.2vw, 24px); font-weight: 900; color: white; letter-spacing: -0.02em; }
-        .phone-sub { font-size: clamp(9px, 2.2vw, 11px); font-weight: 700; color: rgba(255,255,255,0.8); }
-        .domino-anim.fall { animation: dominoFall 0.4s cubic-bezier(0.45, 0.05, 0.55, 0.95) forwards; }
-        .domino-anim.rise { animation: dominoRise 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-        @keyframes dominoFall {
-          0% { transform: rotateX(0deg) rotateZ(0deg); }
-          100% { transform: rotateX(10deg) rotateZ(72deg) translate(12px, 8px); opacity: 0.8; }
-        }
-        @keyframes dominoRise {
-          0% { transform: rotateX(10deg) rotateZ(72deg) translate(12px, 8px); opacity: 0.8; }
-          100% { transform: rotateX(0deg) rotateZ(0deg) translate(0, 0); opacity: 1; }
-        }
-        @media (max-width: 480px) {
-          .grid-domino { gap: 4px; }
-        }
-      `}</style>
 
       <header className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-border/50 md:px-6 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <span className="font-compagnon text-xl font-bold tracking-wider text-foreground">
@@ -289,49 +239,70 @@ export default function DominoLandingPage() {
         </div>
       </header>
 
-      <div className="page-domino">
-        <div className="hero-domino" style={{ marginTop: 40 }}>
-          <h1 className="headline-domino font-black">
+      <div style={{ maxWidth: 600, margin: '0 auto', padding: '0 20px 60px', flex: 1, position: 'relative', zIndex: 1 }}>
+
+        {/* hero */}
+        <div style={{ marginTop: 40, marginBottom: 36 }}>
+          <h1 style={{
+            fontSize: 'clamp(28px, 7vw, 42px)',
+            fontWeight: 900,
+            lineHeight: 1.1,
+            letterSpacing: '-0.03em',
+            marginBottom: 14,
+            color: '#1A1208',
+          }}>
             you save things you never revisit.
-            <em>domino turns everything you capture into something that actually compounds.</em>
           </h1>
+          <p style={{ fontSize: 'clamp(15px, 3.8vw, 18px)', color: 'var(--ink-2)', lineHeight: 1.55, margin: '0 0 24px', fontWeight: 400 }}>
+            domino turns everything you capture into something that actually compounds — indexed, summarised, and surfaced back when it matters.
+          </p>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => setShowWaitlist(true)}
+              style={{
+                height: 46, padding: '0 22px', borderRadius: 12,
+                background: 'var(--domino-accent)', color: 'white',
+                fontWeight: 700, fontSize: 15, border: 0, cursor: 'pointer',
+                fontFamily: 'inherit', letterSpacing: '-0.01em',
+                boxShadow: '0 4px 16px oklch(0.66 0.19 35 / 0.35)',
+                transition: 'transform 160ms ease, box-shadow 160ms ease',
+              }}
+              onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px oklch(0.66 0.19 35 / 0.4)'; }}
+              onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 16px oklch(0.66 0.19 35 / 0.35)'; }}
+            >
+              join the waitlist →
+            </button>
+            <Link
+              href="/login"
+              style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink-3)', textDecoration: 'none', padding: '10px 4px' }}
+            >
+              already have access? login
+            </Link>
+          </div>
         </div>
 
-        <div className="grid-domino" id="grid" ref={gridRef}>
-          <DominoTile top={3} bottom={5} />
-          <div className="cell cream text-cell">
-            <span className="cell-label">step 01</span>
-            <span className="cell-text">share any link, thought, or screenshot — wherever you are.</span>
-          </div>
-          <DominoTile top={6} bottom={2} />
-          <div className="cell white text-cell">
-            <span className="cell-label">step 02</span>
-            <span className="cell-text">we index it and extract the core ideas.</span>
-          </div>
+        {/* phone mockup */}
+        <PhoneMockup />
 
-          <div className="cell white text-cell">
-            <span className="cell-label">step 03</span>
-            <span className="cell-text">get a weekly digest of your own brilliance.</span>
-          </div>
-          <DominoTile top={4} bottom={4} />
-          <div className="cell cream text-cell">
-            <span className="cell-label">step 04</span>
-            <span className="cell-text">see connections between separate notes.</span>
-          </div>
-          <DominoTile top={1} bottom={6} />
-
-          <div className="cell orange">
-            <div className="phone-cell" style={{ pointerEvents: 'none' }}>
-              <span className="phone-num" style={{ filter: 'blur(6px)', userSelect: 'none' }}>{DISPLAY_NUMBER}</span>
-              <span className="phone-sub">start on whatsapp → more ways coming</span>
+        {/* how it works */}
+        <div style={{ marginTop: 40, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {[
+            { step: '01', text: 'send any link, thought, or image to domino on whatsapp' },
+            { step: '02', text: 'we extract the full text and summarise the key ideas with ai' },
+            { step: '03', text: 'search, browse, and chat with everything you\'ve ever saved' },
+            { step: '04', text: 'weekly digest resurfaces your best saves at the right moment' },
+          ].map(({ step, text }) => (
+            <div key={step} style={{
+              background: 'var(--paper)',
+              border: '1px solid var(--hairline)',
+              borderRadius: 16,
+              padding: '14px 16px',
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.06em', color: 'var(--domino-accent)', marginBottom: 6 }}>step {step}</div>
+              <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.4, color: 'var(--ink-2)' }}>{text}</div>
             </div>
-          </div>
-          <div className="cell black text-cell" style={{ gridColumn: 'span 2' }}>
-            <span className="cell-label">the domino effect</span>
-            <span className="cell-text">
-              domino builds a taste profile from everything you capture and feeds it back as recommendations.
-            </span>
-          </div>
+          ))}
         </div>
 
       </div>
