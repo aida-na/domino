@@ -122,7 +122,7 @@ function DominoEffect() {
     >
       {/* stage */}
       <div style={{
-        background: 'linear-gradient(165deg, #201A10, #171208, #120E08)',
+        background: 'transparent',
         borderRadius: 22,
         padding: '32px 28px 36px',
         display: 'flex',
@@ -131,24 +131,9 @@ function DominoEffect() {
         gap: 9,
         perspective: '520px',
         perspectiveOrigin: '50% 0%',
-        boxShadow:
-          '0 24px 64px rgba(0,0,0,0.28), 0 6px 16px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.04)',
         position: 'relative',
         overflow: 'hidden',
       }}>
-
-        {/* warm ambient light bleed */}
-        <div style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none', borderRadius: 22,
-          background: 'radial-gradient(ellipse 70% 40% at 50% 0%, rgba(237,71,21,0.07), transparent)',
-        }} />
-
-        {/* floor highlight */}
-        <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0, height: 40,
-          background: 'linear-gradient(to top, rgba(255,255,255,0.025), transparent)',
-          pointerEvents: 'none', borderRadius: '0 0 22px 22px',
-        }} />
 
         {PAIRS.map(([top, bot], i) => {
           const isFallen = fallen[i];
