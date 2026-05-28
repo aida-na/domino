@@ -1,0 +1,58 @@
+# FastAPI and server
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
+
+# Database
+sqlalchemy>=2.0.25
+greenlet>=3.0.0
+alembic>=1.13.1
+asyncpg>=0.29.0
+aiosqlite>=0.19.0
+psycopg2-binary>=2.9.9
+
+# AI
+google-genai>=1.63.0
+
+# PDF processing
+pypdf>=4.0.0
+
+# URL extraction
+trafilatura>=1.8.0
+lxml>=5.0.0
+lxml_html_clean>=0.1.0
+
+# Authentication
+bcrypt>=4.0.0
+
+# Email
+resend>=2.0.0
+
+# SMS / WhatsApp
+twilio>=9.0.0
+
+# Cloud services
+google-cloud-storage>=2.16.0
+
+# Scheduling
+croniter>=2.0.0
+
+# HTTP client
+httpx[http2]>=0.26.0
+h2>=4.0.0
+requests>=2.31.0
+
+# Utilities
+python-dotenv>=1.0.1
+pydantic[email]>=2.5.3
+pydantic-settings>=2.1.0
+
+# Rate limiting
+slowapi>=0.1.9
+
+# Monitoring
+sentry-sdk>=1.40.0
+
+# Testing
+pytest>=7.0.0
+pytest-asyncio>=0.23.0
