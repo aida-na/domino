@@ -2,17 +2,151 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
+---
 
-Domino is a "second brain" app. Users save content (links, notes, images, voice) via WhatsApp and access it through a web dashboard. The backend processes content with Gemini AI (summarization, topic classification, chat).
+## Purpose
+
+**Domino** is a "second brain" app built by **daily labs**. The core loop:
+
+1. User saves content (links, notes, images, voice memos) by sending a WhatsApp message
+2. Backend extracts text, classifies the topic, and generates a rich AI summary via Gemini
+3. User accesses everything through a web dashboard — search, browse, chat with their saved items
+4. Weekly digest email resurfaces the best of what they've saved
+5. "Discover" tab surfaces content recommendations based on their taste profile
+
+The tagline: *"you save things you never revisit. domino turns everything you capture into something that actually compounds."*
+
+WhatsApp is the primary capture interface. The web dashboard is for retrieval and exploration. More capture methods (email, browser extension) are planned.
+
+---
 
 ## Repository Structure
 
 ```
 domino/
-  backend/    FastAPI Python backend
-  frontend/   Next.js 16 frontend
+  backend/    FastAPI Python backend (deployed to Vercel as Python serverless functions)
+  frontend/   Next.js 16 frontend (deployed to Vercel)
 ```
+
+---
+
+## Tech Stack
+
+### Backend
+| Layer | Technology |
+|---|---|
+| Framework | FastAPI (Python) |
+| Server | Uvicorn (ASGI) |
+| ORM | SQLAlchemy 2.x (async) |
+| Database (local) | SQLite via aiosqlite |
+| Database (prod) | Supabase PostgreSQL via asyncpg |
+| AI | Google Gemini (`google-genai`) |
+| WhatsApp | Twilio |
+| Email | Resend |
+| File storage | Google Cloud Storage |
+| Auth | Session-based (UUID Bearer tokens) + OTP via WhatsApp |
+| URL extraction | trafilatura |
+| PDF parsing | pypdf |
+| Rate limiting | slowapi |
+| Scheduling | croniter |
+| Monitoring | Sentry |
+| Testing | pytest + pytest-asyncio |
+
+### Frontend
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (app router) |
+| Language | TypeScript |
+| Styling | Tailwind CSS v4 |
+| Animation | Framer Motion |
+| Icons | Lucide React |
+| Components | shadcn/ui (Radix UI primitives) |
+| Class utilities | clsx + tailwind-merge + class-variance-authority |
+
+---
+
+## Design System
+
+### Brand Identity
+- **Name:** domino (always lowercase)
+- **Wordmark class:** `.dn-wordmark` — serif font, weight 800, tight tracking
+- **Accent color:** `#ED4715` (burnt orange) — used for primary actions, active states, the wordmark dot
+- **Visual motif:** actual domino tiles (the grid on the landing page animates a chain-fall effect)
+- **Tone:** lowercase throughout the UI, direct and slightly editorial
+
+### Color Tokens (`globals.css`)
+```css
+/* Domino v2 design tokens */
+--bg:            oklch(0.985 0.008 90)   /* warm off-white page bg */
+--bg-deep:       oklch(0.97 0.01 90)     /* slightly deeper bg */
+--paper:         oklch(1 0 0)            /* pure white card surface */
+--ink:           oklch(0.17 0.012 60)    /* near-black text */
+--ink-2:         oklch(0.32 0.012 60)    /* secondary text */
+--ink-3:         oklch(0.5 0.012 60)     /* tertiary / muted text */
+--ink-4:         oklch(0.68 0.012 60)    /* placeholder / disabled */
+--hairline:      oklch(0.88 0.008 80)    /* default border */
+--hairline-soft: oklch(0.93 0.008 80)    /* subtle border */
+
+/* Category card tints */
+--card-y: oklch(0.965 0.045 100)  /* yellow  */
+--card-p: oklch(0.93 0.035 350)   /* pink    */
+--card-v: oklch(0.93 0.04 305)    /* violet  */
+--card-o: oklch(0.94 0.045 50)    /* orange  */
+--card-m: oklch(0.95 0.045 165)   /* mint    */
+--card-b: oklch(0.94 0.04 230)    /* blue    */
+--card-s: oklch(0.96 0.012 90)    /* stone   */
+
+/* Accent */
+--domino-accent:      oklch(0.66 0.19 35)  /* #ED4715 equivalent */
+--domino-accent-deep: oklch(0.55 0.17 35)  /* hover/pressed state */
+--domino-star:        oklch(0.82 0.16 85)  /* starred item gold */
+```
+
+shadcn/ui semantic tokens (`--primary`, `--background`, etc.) also defined in `:root` and `.dark` — `--primary` is `#ED4715` in both modes.
+
+### Typography
+| Role | Font | Class |
+|---|---|---|
+| Wordmark / display | DT Getai Grotesk Display Black (local OTF) | `.font-compagnon` |
+| Monospace / code | DraftingMono Regular + Light (local OTF) | `.font-drafting-mono` |
+| Body (via Next.js var) | Figtree | `.font-figtree` |
+| Serif accent | Newsreader | `var(--font-serif)` |
+| Mono accent | JetBrains Mono | `var(--font-jb-mono)` |
+
+### Core CSS Component Classes
+All prefixed `dn-` — defined in `frontend/src/app/globals.css`:
+
+| Class | Description |
+|---|---|
+| `.dn-card` | Item card — 18px radius, subtle shadow, hover lift (-2px translateY) |
+| `.dn-masonry` | 2-column masonry grid for item cards |
+| `.dn-chip` | Filter pill — 34px height, pill shape, active state fills with `--ink` |
+| `.dn-icon-btn` | 28×28px icon button, 8px radius, hover bg |
+| `.dn-bottom-nav` | 4-column bottom nav bar with blur backdrop |
+| `.dn-tab` | Nav tab item — active color is `--domino-accent` |
+| `.dn-fab` | Floating action button — 56×56px, 18px radius, accent bg |
+| `.dn-sheet` | Bottom sheet modal — slides up from bottom, 22px top radius |
+| `.dn-backdrop` | Dimmed overlay behind sheets |
+| `.dn-grabber` | Sheet drag handle indicator |
+| `.dn-search-bar` | Pill-shaped search input with focus ring |
+| `.dn-hscroll` | Horizontal scrolling row (hidden scrollbar) |
+
+### Animations
+- `dnFadeIn` — opacity 0→1, 200ms
+- `dnSlideUp` — translateY(110%)→0, 280ms cubic-bezier(.2,.8,.2,1)
+- `dnPop` — scale(0.6)→1, 240ms cubic-bezier(.2,.8,.2,1)
+- Domino tile fall/rise — chain animation on the landing page grid
+- Reduced motion: all animations set to 0.01ms via `prefers-reduced-motion`
+
+### Layout Conventions
+- Mobile-first, single-column layout
+- Bottom navigation (4 tabs: dashboard, map, discover, me)
+- Safe area insets respected (`env(safe-area-inset-bottom)`)
+- `overscroll-behavior: none` on body to prevent pull-to-refresh
+- Cards use 2-column masonry grid (`.dn-masonry`)
+- Background texture: `.bg-check-grid` (dashed grid SVG pattern)
+
+---
 
 ## Development Commands
 
@@ -39,6 +173,8 @@ npm run lint      # ESLint
 
 Set `NEXT_PUBLIC_API_URL=http://localhost:8000` in `frontend/.env.local` to proxy API calls to the local backend.
 
+---
+
 ## Architecture
 
 ### Backend
@@ -58,6 +194,8 @@ Set `NEXT_PUBLIC_API_URL=http://localhost:8000` in `frontend/.env.local` to prox
 
 **Auth flow:** OTP request → WhatsApp code → verify → creates `domino_sessions` row → UUID returned as `access_token` → used as `Authorization: Bearer <uuid>` on all subsequent requests.
 
+**Twilio webhook URL:** `POST /api/v1/sms` — configure this in Twilio console for incoming WhatsApp messages.
+
 ### Frontend
 
 **Next.js 16** app router with TypeScript and Tailwind CSS v4.
@@ -75,9 +213,32 @@ Set `NEXT_PUBLIC_API_URL=http://localhost:8000` in `frontend/.env.local` to prox
 
 Tables (all prefixed `domino_`): `users`, `items`, `otps`, `sessions`, `messages`, `reminders`, `waitlist`. `domino_users.phone` (E.164 format) is the FK used across all tables.
 
+---
+
 ## Deployment
 
-- **Backend:** Google Cloud Run (Docker). `PORT` env var sets the uvicorn port.
-- **Frontend:** Vercel (inferred from CORS regex `^https://domino[a-z0-9\-]*\.vercel\.app$`).
-- **CI:** GitHub Actions. Push to `staging` branch triggers deploy to Cloud Run staging + Vercel build.
-- **Weekly digest:** GitHub Actions workflow (`domino-weekly-digest.yml`) calls `POST /api/v1/digest/trigger` with `X-Internal-Secret` header.
+| Service | Platform | URL |
+|---|---|---|
+| Backend | Vercel (Python serverless) | `https://domino-back-end.vercel.app` |
+| Frontend | Vercel (Next.js) | `https://domino-*.vercel.app` |
+| Database | Supabase PostgreSQL | — |
+| Media storage | Google Cloud Storage | — |
+
+### Environment Variables
+
+**Frontend (Vercel env vars):**
+```
+NEXT_PUBLIC_API_URL = https://domino-back-end.vercel.app
+```
+
+**Backend `.env` keys** (see `backend/.env.example` for full list):
+- `DATABASE_URL` — Supabase PostgreSQL connection string
+- `GEMINI_API_KEY` — Google Gemini API key
+- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER`
+- `RESEND_API_KEY` — for digest emails
+- `GCS_BUCKET_NAME`, `GOOGLE_APPLICATION_CREDENTIALS` — for image storage
+- `DOMINO_INTERNAL_SECRET` — protects `/digest/trigger` endpoint
+
+### CI/CD
+- GitHub Actions: push to `staging` branch triggers backend + frontend deploy
+- Weekly digest: `domino-weekly-digest.yml` calls `POST /api/v1/digest/trigger` with `X-Internal-Secret` header
