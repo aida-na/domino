@@ -16,18 +16,22 @@ GCS_PREFIX = "gcs://"
 
 
 def gcs_configured() -> bool:
-    return bool(settings.GCS_BUCKET_NAME and settings.GCS_SERVICE_ACCOUNT_JSON)
+    return bool(settings.GCS_BUCKET_NAME)
 
 
 def _gcs_client():
     from google.cloud import storage
     from google.oauth2 import service_account
 
-    info = json.loads(settings.GCS_SERVICE_ACCOUNT_JSON)
-    creds = service_account.Credentials.from_service_account_info(
-        info, scopes=["https://www.googleapis.com/auth/cloud-platform"],
-    )
-    return storage.Client(credentials=creds, project=info.get("project_id"))
+    if settings.GCS_SERVICE_ACCOUNT_JSON:
+        info = json.loads(settings.GCS_SERVICE_ACCOUNT_JSON)
+        creds = service_account.Credentials.from_service_account_info(
+            info, scopes=["https://www.googleapis.com/auth/cloud-platform"],
+        )
+        return storage.Client(credentials=creds, project=info.get("project_id"))
+
+    # Cloud Run / GCE: uses the attached service account via metadata server (no key file).
+    return storage.Client()
 
 
 def _ext_for_mime(mime_type: str) -> str:
