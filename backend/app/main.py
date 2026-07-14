@@ -1,5 +1,6 @@
+import asyncio
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,12 +16,14 @@ from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
 
+# Keep Cloud Run boot unbound by DB — unix-socket hangs can exceed startup probes.
+_SCHEMA_TIMEOUT_SECONDS = 20
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifespan — ensure domino tables exist."""
-    if settings.RUN_STARTUP_SCHEMA:
-        try:
+
+async def _apply_startup_schema() -> None:
+    """Create tables if needed. Never raises — logs and returns on failure."""
+    try:
+        async with asyncio.timeout(_SCHEMA_TIMEOUT_SECONDS):
             async with engine.begin() as conn:
                 await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
                 await conn.execute(text("""
@@ -124,15 +127,26 @@ async def lifespan(app: FastAPI):
                         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
                     )
                 """))
-            logger.info("Startup schema applied successfully")
-        except Exception:
-            # Don't block process boot — Cloud Run needs PORT listening.
-            # Fix Cloud SQL / VPC / DATABASE_URL, then redeploy with schema on.
-            logger.exception(
-                "Startup schema failed (check Cloud SQL, VPC connector, DATABASE_URL)"
-            )
+        logger.info("Startup schema applied successfully")
+    except Exception:
+        logger.exception(
+            "Startup schema failed (check Cloud SQL, VPC connector, DATABASE_URL)"
+        )
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Boot immediately; apply schema in the background so PORT can bind."""
+    schema_task: asyncio.Task | None = None
+    if settings.RUN_STARTUP_SCHEMA:
+        schema_task = asyncio.create_task(_apply_startup_schema())
 
     yield
+
+    if schema_task and not schema_task.done():
+        schema_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await schema_task
 
 
 app = FastAPI(

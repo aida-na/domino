@@ -13,7 +13,9 @@ if "postgresql" in database_url:
     connect_args = {
         "statement_cache_size": 0,
         "prepared_statement_cache_size": 0,
-        "timeout": 30,
+        # Fail fast on Cloud Run when VPC/Cloud SQL path is broken (default hang = boot timeout).
+        "timeout": 10,
+        "command_timeout": 30,
         "server_settings": {"application_name": "domino-api"},
     }
 
