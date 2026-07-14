@@ -190,6 +190,24 @@ async def health():
     return {"status": "healthy"}
 
 
+@app.get("/health/db")
+async def health_db():
+    """Diagnose Cloud SQL connectivity without touching auth/Twilio."""
+    try:
+        async with asyncio.timeout(10):
+            async with engine.begin() as conn:
+                await conn.execute(text("SELECT 1"))
+        return {"status": "healthy", "database": "ok"}
+    except Exception as exc:
+        logger.exception("health/db failed")
+        return {
+            "status": "unhealthy",
+            "database": "error",
+            "error": type(exc).__name__,
+            "detail": str(exc)[:300],
+        }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
