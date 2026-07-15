@@ -134,7 +134,7 @@ export default function DominoPrivacyPage() {
           <li>
             <strong className="font-semibold text-[#1A1208]">service providers and subprocessors:</strong> we
             work with third-party companies to help operate, support, and improve the services — including
-            hosting (e.g. google cloud, supabase), messaging infrastructure (e.g. twilio/whatsapp), ai processing
+            hosting (e.g. google cloud, supabase), messaging infrastructure (e.g. blooio/imessage), ai processing
             (e.g. google), and analytics. these providers process personal information on our behalf and only
             as instructed by us.
           </li>

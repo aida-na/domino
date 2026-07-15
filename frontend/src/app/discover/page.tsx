@@ -196,7 +196,7 @@ function DiscoverContent() {
           <div style={{ fontSize: 32, marginBottom: 12 }}>🗺️</div>
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', marginBottom: 6 }}>Nothing here yet</div>
           <p style={{ fontSize: 13, color: 'var(--ink-3)', lineHeight: 1.6 }}>
-            Save links, notes, or ideas via WhatsApp.<br />Patterns will emerge as your library grows.
+            Save links, notes, or ideas via iMessage.<br />Patterns will emerge as your library grows.
           </p>
         </div>
       )}

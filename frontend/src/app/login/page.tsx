@@ -104,7 +104,7 @@ export default function DominoLoginPage() {
     try {
       await dominoApi.requestOtp(phone.trim());
       setCode('');
-      setResendNotice('sent a new code — check WhatsApp.');
+      setResendNotice('sent a new code — check your texts.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not resend code.');
     } finally {
@@ -191,7 +191,7 @@ export default function DominoLoginPage() {
             mode === m ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
           )}
         >
-          {m === 'otp' ? 'WhatsApp code' : m === 'password' ? 'Password' : 'Magic link'}
+          {m === 'otp' ? 'Text code' : m === 'password' ? 'Password' : 'Magic link'}
         </button>
       ))}
     </div>
@@ -210,7 +210,7 @@ export default function DominoLoginPage() {
           sign in on the web
         </h1>
         <p className="mb-6 max-w-[420px] text-sm leading-relaxed text-muted-foreground">
-          use a one-time code from WhatsApp, your saved password, or a magic link—no token in the URL needed
+          use a one-time code by text, your saved password, or a magic link—no token in the URL needed
           for code or password sign-in.
         </p>
 
@@ -242,7 +242,7 @@ export default function DominoLoginPage() {
         {mode === 'otp' && otpStep === 'code' && (
           <form onSubmit={handleOtpVerify} className="mb-8 space-y-4">
             <p className="text-sm text-muted-foreground">
-              check WhatsApp for your code, sent to{' '}
+              check your texts for your code, sent to{' '}
               <span className="font-medium text-foreground">{phone}</span>
             </p>
             <label htmlFor="domino-otp" className="block text-xs font-bold tracking-wide text-muted-foreground">
@@ -367,7 +367,7 @@ export default function DominoLoginPage() {
               {submitting ? 'signing in…' : 'sign in'}
             </Button>
             <p className="text-xs text-muted-foreground">
-              first time? use <button type="button" className="font-semibold text-primary underline" onClick={() => setMode('otp')}>WhatsApp code</button> to sign in, then you can add a password.
+              first time? use <button type="button" className="font-semibold text-primary underline" onClick={() => setMode('otp')}>text code</button> to sign in, then you can add a password.
             </p>
           </form>
         )}
@@ -375,7 +375,7 @@ export default function DominoLoginPage() {
         {mode === 'magic' && (
           <form onSubmit={handleMagicLink} className="mb-8 space-y-4">
             <p className="text-sm text-muted-foreground">
-              if this number is already on file, we&apos;ll WhatsApp you a link to open the dashboard.
+              if this number is already on file, we&apos;ll text you a link to open the dashboard.
             </p>
             <label htmlFor="domino-phone-magic" className="block text-xs font-bold tracking-wide text-muted-foreground">
               phone number
@@ -396,7 +396,7 @@ export default function DominoLoginPage() {
             </Button>
             {magicSent ? (
               <p className="text-sm text-muted-foreground" role="status">
-                if this number is registered, check WhatsApp for a sign-in link.
+                if this number is registered, check your texts for a sign-in link.
               </p>
             ) : null}
           </form>

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 async def process_due_reminders() -> int:
     """Find and send all reminders where next_fire_at <= now. Returns count sent."""
-    from app.api.endpoints.auth import _send_whatsapp
+    from app.api.endpoints.auth import _send_message
 
     now = datetime.now(timezone.utc)
     sent = 0
@@ -46,7 +46,7 @@ async def process_due_reminders() -> int:
                 else:
                     text = f"🔔 reminder: {text}"
 
-                _send_whatsapp(reminder.user_phone, text)
+                _send_message(reminder.user_phone, text)
                 sent += 1
 
                 if reminder.is_recurring and reminder.cron_pattern:

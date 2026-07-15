@@ -1,11 +1,13 @@
-"""Domino WhatsApp webhook — receives inbound Twilio messages and saves items."""
+"""Domino messaging webhook — receives inbound Blooio iMessage/SMS and saves items."""
 
+import json
 import logging
 import re
+from typing import Any
 
 _EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Form, Header, HTTPException, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,18 +16,15 @@ from app.db.session import AsyncSessionLocal, get_db
 from app.models.domino import DominoItem, DominoMessage, DominoUser
 from app.services.digest import send_weekly_digests
 from app.services.processor import detect_input_type, process_image, process_note, process_url
-from app.services.gemini_client import DEFAULT_GEMINI_MODEL, generate_with_retry
+from app.services.gemini_client import DEFAULT_GEMINI_MODEL
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-_TWIML_EMPTY = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>'
 
 _LOGIN_KEYWORDS = {"login", "link", "dashboard", "hi", "hello", "start", "help"}
 _STOP_KEYWORDS = {"stop", "unsubscribe", "opt out", "optout", "quit"}
 _LIST_KEYWORDS = {"list", "show all", "my items", "my stuff", "what did i save"}
 
-_URL_RE = re.compile(r"^https?://", re.IGNORECASE)
 _DELETE_RE = re.compile(r"^(delete|remove)\s+(last|the last|that)\b", re.IGNORECASE)
 _SETTINGS_RE = re.compile(r"^(digest at|set digest)\b", re.IGNORECASE)
 
@@ -66,13 +65,13 @@ async def _load_recent_messages(db: AsyncSession, phone: str, limit: int = 10) -
 
 async def _handle_new_user(phone: str, body: str, db: AsyncSession) -> None:
     from app.api.endpoints.auth import (
-        _send_whatsapp, build_magic_link, create_session_for_phone,
+        _send_message, build_magic_link, create_session_for_phone,
     )
 
     session_token, _ = await create_session_for_phone(phone, db)
     link = build_magic_link(session_token)
     welcome = f"welcome to domino 🁣\n\nyour second brain is ready. tap to open your dashboard:\n{link}"
-    _send_whatsapp(phone, welcome)
+    _send_message(phone, welcome)
     await _log_message(db, phone, "outbound", welcome)
 
     # Ask for email for weekly digest
@@ -81,7 +80,7 @@ async def _handle_new_user(phone: str, body: str, db: AsyncSession) -> None:
     if user:
         user.email_pending = True
     email_prompt = "one last thing — what's your email? i'll send your weekly digest there. reply with your email or 'skip'."
-    _send_whatsapp(phone, email_prompt)
+    _send_message(phone, email_prompt)
     await _log_message(db, phone, "outbound", email_prompt)
 
     await _save_item(phone, body, db)
@@ -89,12 +88,12 @@ async def _handle_new_user(phone: str, body: str, db: AsyncSession) -> None:
 
 async def _handle_login(phone: str, db: AsyncSession) -> None:
     from app.api.endpoints.auth import (
-        _send_whatsapp, build_magic_link, create_session_for_phone,
+        _send_message, build_magic_link, create_session_for_phone,
     )
     session_token, _ = await create_session_for_phone(phone, db)
     link = build_magic_link(session_token)
     reply = f"here's your dashboard link:\n{link}"
-    _send_whatsapp(phone, reply)
+    _send_message(phone, reply)
     await _log_message(db, phone, "outbound", reply)
     await db.commit()
 
@@ -122,11 +121,16 @@ async def _save_item(phone: str, raw: str, db: AsyncSession) -> DominoItem | Non
     return item
 
 
-async def _handle_save(phone: str, body: str, db: AsyncSession, message_sid: str | None = None) -> None:
-    from app.api.endpoints.auth import _react_whatsapp
+async def _handle_save(
+    phone: str,
+    body: str,
+    db: AsyncSession,
+    message_id: str | None = None,
+) -> None:
+    from app.api.endpoints.auth import _react_message
 
-    if message_sid:
-        _react_whatsapp(phone, "👍", message_sid)
+    if message_id:
+        _react_message(phone, message_id, "👍")
 
     item = await _save_item(phone, body, db)
 
@@ -135,7 +139,7 @@ async def _handle_save(phone: str, body: str, db: AsyncSession, message_sid: str
 
 
 async def _handle_email_collection(phone: str, body: str, user: DominoUser, db: AsyncSession) -> None:
-    from app.api.endpoints.auth import _send_whatsapp
+    from app.api.endpoints.auth import _send_message
 
     await _log_message(db, phone, "inbound", body)
     text = body.strip()
@@ -157,13 +161,13 @@ async def _handle_email_collection(phone: str, body: str, user: DominoUser, db: 
     else:
         reply = "that doesn't look like an email. reply with your email address or 'skip'."
 
-    _send_whatsapp(phone, reply)
+    _send_message(phone, reply)
     await _log_message(db, phone, "outbound", reply)
     await db.commit()
 
 
 async def _handle_command_delete(phone: str, body: str, db: AsyncSession, recent: list[DominoMessage]) -> None:
-    from app.api.endpoints.auth import _send_whatsapp
+    from app.api.endpoints.auth import _send_message
 
     await _log_message(db, phone, "inbound", body)
 
@@ -187,7 +191,7 @@ async def _handle_command_delete(phone: str, body: str, db: AsyncSession, recent
 
     if not last_item_id:
         reply = "nothing to delete — i couldn't find your last saved item."
-        _send_whatsapp(phone, reply)
+        _send_message(phone, reply)
         await _log_message(db, phone, "outbound", reply)
         await db.commit()
         return
@@ -206,13 +210,13 @@ async def _handle_command_delete(phone: str, body: str, db: AsyncSession, recent
     else:
         reply = "that item was already deleted."
 
-    _send_whatsapp(phone, reply)
+    _send_message(phone, reply)
     await _log_message(db, phone, "outbound", reply)
     await db.commit()
 
 
 async def _handle_command_list(phone: str, body: str, db: AsyncSession) -> None:
-    from app.api.endpoints.auth import _send_whatsapp
+    from app.api.endpoints.auth import _send_message
 
     await _log_message(db, phone, "inbound", body)
     result = await db.execute(
@@ -229,15 +233,13 @@ async def _handle_command_list(phone: str, body: str, db: AsyncSession) -> None:
         lines = [f"{i}. {(item.summary or item.raw_input)[:50]}" for i, item in enumerate(items, 1)]
         reply = "your recent saves:\n" + "\n".join(lines)
 
-    _send_whatsapp(phone, reply)
+    _send_message(phone, reply)
     await _log_message(db, phone, "outbound", reply)
     await db.commit()
 
 
 async def _handle_command_settings(phone: str, body: str, db: AsyncSession) -> None:
-    from app.api.endpoints.auth import _send_whatsapp
-    from datetime import datetime
-    from sqlalchemy import select
+    from app.api.endpoints.auth import _send_message
 
     await _log_message(db, phone, "inbound", body)
 
@@ -254,7 +256,7 @@ async def _handle_command_settings(phone: str, body: str, db: AsyncSession) -> N
             new_time = f"{hour:02d}:00"
         else:
             reply = "send 'digest at HH:MM' (e.g. 'digest at 9:00') to change your digest time."
-            _send_whatsapp(phone, reply)
+            _send_message(phone, reply)
             await _log_message(db, phone, "outbound", reply)
             await db.commit()
             return
@@ -262,7 +264,7 @@ async def _handle_command_settings(phone: str, body: str, db: AsyncSession) -> N
         h, m = int(time_match.group(1)), int(time_match.group(2))
         if h > 23 or m > 59:
             reply = "that doesn't look like a valid time. try 'digest at 9:00'."
-            _send_whatsapp(phone, reply)
+            _send_message(phone, reply)
             await _log_message(db, phone, "outbound", reply)
             await db.commit()
             return
@@ -274,23 +276,12 @@ async def _handle_command_settings(phone: str, body: str, db: AsyncSession) -> N
         user.digest_time = new_time
 
     reply = f"digest time updated to {new_time} ✓"
-    _send_whatsapp(phone, reply)
+    _send_message(phone, reply)
     await _log_message(db, phone, "outbound", reply)
     await db.commit()
 
 
 # ── Media handlers ────────────────────────────────────────────────────────
-
-async def _download_twilio_media(media_url: str) -> bytes:
-    import httpx
-    async with httpx.AsyncClient(timeout=60) as client:
-        resp = await client.get(
-            media_url,
-            auth=(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN),
-        )
-        resp.raise_for_status()
-        return resp.content
-
 
 async def _transcribe_audio(audio_bytes: bytes, mime_type: str) -> str:
     """Transcribe audio via Gemini Files API (more reliable than inline data for audio)."""
@@ -300,7 +291,12 @@ async def _transcribe_audio(audio_bytes: bytes, mime_type: str) -> str:
     from app.services.gemini_client import get_gemini_client
     from google.genai import types as gtypes
 
-    ext = ".ogg" if "ogg" in mime_type else ".mp3" if "mp3" in mime_type else ".m4a"
+    ext = (
+        ".ogg" if "ogg" in mime_type
+        else ".mp3" if "mp3" in mime_type
+        else ".caf" if "caf" in mime_type
+        else ".m4a"
+    )
     client = get_gemini_client()
 
     with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as f:
@@ -344,18 +340,34 @@ async def _transcribe_audio(audio_bytes: bytes, mime_type: str) -> str:
             pass
 
 
+def _guess_media_kind(content_type: str, media_url: str) -> str:
+    """Return 'audio', 'image', or 'other' from content-type / URL."""
+    mime = (content_type or "").split(";")[0].strip().lower()
+    if mime.startswith("audio/") or mime in {"audio/x-caf", "audio/mp4"}:
+        return "audio"
+    if mime.startswith("image/"):
+        return "image"
+    lower = media_url.lower()
+    if any(lower.endswith(ext) for ext in (".m4a", ".caf", ".mp3", ".ogg", ".wav", ".aac")):
+        return "audio"
+    if any(lower.endswith(ext) for ext in (".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".heif")):
+        return "image"
+    return "other"
+
+
 async def _handle_image(phone: str, media_url: str, content_type: str, db: AsyncSession) -> None:
-    from app.api.endpoints.auth import _send_whatsapp
+    from app.api.endpoints.auth import _send_message
     from app.services.storage import upload_to_gcs
     from app.services.gemini_client import generate_with_retry_multimodal
+    from app.services.blooio import download_media
 
     try:
-        image_bytes = await _download_twilio_media(media_url)
-        mime = content_type.split(";")[0].strip() or "image/jpeg"
+        image_bytes, detected_type = await download_media(media_url)
+        mime = (content_type or detected_type or "image/jpeg").split(";")[0].strip() or "image/jpeg"
 
-        # Upload to GCS for persistent URL (Twilio URLs expire)
+        # Upload to GCS for persistent URL
         stored_uri = await upload_to_gcs(image_bytes, mime, folder="domino/images")
-        raw_input = stored_uri or media_url  # fall back to Twilio URL if GCS not configured
+        raw_input = stored_uri or media_url
 
         description = await generate_with_retry_multimodal(
             model=DEFAULT_GEMINI_MODEL,
@@ -390,24 +402,25 @@ async def _handle_image(phone: str, media_url: str, content_type: str, db: Async
     await _log_message(db, phone, "inbound", f"[image] {description[:100]}", related_item_id=item.id)
 
     reply = f"📷 saved: {description[:100]}"
-    _send_whatsapp(phone, reply)
+    _send_message(phone, reply)
     await _log_message(db, phone, "outbound", reply)
     await db.commit()
 
 
 async def _handle_voice(phone: str, media_url: str, content_type: str, db: AsyncSession) -> None:
-    from app.api.endpoints.auth import _send_whatsapp
+    from app.api.endpoints.auth import _send_message
+    from app.services.blooio import download_media
 
     try:
-        audio_bytes = await _download_twilio_media(media_url)
-        mime = content_type.split(";")[0].strip() or "audio/ogg"
+        audio_bytes, detected_type = await download_media(media_url)
+        mime = (content_type or detected_type or "audio/mp4").split(";")[0].strip() or "audio/mp4"
         transcript = await _transcribe_audio(audio_bytes, mime)
         if not transcript:
             raise ValueError("Empty transcript")
     except Exception as e:
         logger.warning("Voice transcription failed for %s: %s", phone, e)
         reply = "sorry, i couldn't transcribe that voice note. try sending it as text."
-        _send_whatsapp(phone, reply)
+        _send_message(phone, reply)
         await _log_message(db, phone, "outbound", reply)
         await db.commit()
         return
@@ -430,17 +443,21 @@ async def _handle_voice(phone: str, media_url: str, content_type: str, db: Async
     await _log_message(db, phone, "inbound", f"[voice] {transcript[:100]}", related_item_id=item.id)
 
     reply = f"🎤 saved: {transcript[:80]}"
-    _send_whatsapp(phone, reply)
+    _send_message(phone, reply)
     await _log_message(db, phone, "outbound", reply)
     await db.commit()
 
 
 # ── Main message handler ──────────────────────────────────────────────────
 
-async def _handle_message(raw_from: str, body: str, message_sid: str | None = None) -> None:
-    from app.api.endpoints.auth import _strip_whatsapp
+async def _handle_message(
+    raw_from: str,
+    body: str,
+    message_id: str | None = None,
+) -> None:
+    from app.api.endpoints.auth import _normalize_inbound_phone
 
-    phone = _strip_whatsapp(raw_from)
+    phone = _normalize_inbound_phone(raw_from)
 
     async with AsyncSessionLocal() as db:
         try:
@@ -460,9 +477,9 @@ async def _handle_message(raw_from: str, body: str, message_sid: str | None = No
             elif lower in _LOGIN_KEYWORDS:
                 await _handle_login(phone, db)
             elif lower in _STOP_KEYWORDS:
-                from app.api.endpoints.auth import _send_whatsapp
+                from app.api.endpoints.auth import _send_message
                 reply = "you've been unsubscribed from domino digests. text 'start' anytime to come back."
-                _send_whatsapp(phone, reply)
+                _send_message(phone, reply)
                 await _log_message(db, phone, "outbound", reply)
                 await db.commit()
             elif _DELETE_RE.match(text):
@@ -472,16 +489,21 @@ async def _handle_message(raw_from: str, body: str, message_sid: str | None = No
             elif _SETTINGS_RE.match(text):
                 await _handle_command_settings(phone, body, db)
             else:
-                await _handle_save(phone, body, db, message_sid=message_sid)
+                await _handle_save(phone, body, db, message_id=message_id)
 
         except Exception as e:
-            logger.error("WhatsApp handler error for %s: %s", phone, e, exc_info=True)
+            logger.error("Message handler error for %s: %s", phone, e, exc_info=True)
 
 
-async def _handle_media_message(raw_from: str, body: str, media_url: str, media_content_type: str) -> None:
-    from app.api.endpoints.auth import _strip_whatsapp
+async def _handle_media_message(
+    raw_from: str,
+    body: str,
+    media_url: str,
+) -> None:
+    from app.api.endpoints.auth import _normalize_inbound_phone
+    from app.services.blooio import download_media
 
-    phone = _strip_whatsapp(raw_from)
+    phone = _normalize_inbound_phone(raw_from)
 
     async with AsyncSessionLocal() as db:
         try:
@@ -491,40 +513,100 @@ async def _handle_media_message(raw_from: str, body: str, media_url: str, media_
                 await _handle_new_user(phone, body or media_url, db)
                 return
 
-            mime = media_content_type.split(";")[0].strip().lower()
-            if mime.startswith("audio/"):
-                await _handle_voice(phone, media_url, media_content_type, db)
-            elif mime.startswith("image/"):
-                await _handle_image(phone, media_url, media_content_type, db)
+            try:
+                _, content_type = await download_media(media_url)
+            except Exception:
+                content_type = ""
+
+            kind = _guess_media_kind(content_type, media_url)
+            if kind == "audio":
+                await _handle_voice(phone, media_url, content_type, db)
+            elif kind == "image":
+                await _handle_image(phone, media_url, content_type, db)
             else:
                 await _handle_save(phone, media_url, db)
         except Exception as e:
-            logger.error("WhatsApp media handler error for %s: %s", phone, e, exc_info=True)
+            logger.error("Media handler error for %s: %s", phone, e, exc_info=True)
 
 
-# ── WhatsApp webhook endpoint ─────────────────────────────────────────────
+def _first_attachment_url(attachments: Any) -> str | None:
+    """Extract the first media URL from a Blooio attachments field."""
+    if not attachments:
+        return None
+    if isinstance(attachments, str) and attachments.startswith("http"):
+        return attachments
+    if isinstance(attachments, list) and attachments:
+        first = attachments[0]
+        if isinstance(first, str) and first.startswith("http"):
+            return first
+        if isinstance(first, dict):
+            url = first.get("url") or first.get("media_url")
+            if isinstance(url, str) and url.startswith("http"):
+                return url
+    return None
+
+
+# ── Blooio webhook endpoint ───────────────────────────────────────────────
 
 @router.post("/sms")
-async def whatsapp_webhook(
+async def blooio_webhook(
+    request: Request,
     background_tasks: BackgroundTasks,
-    From: str | None = Form(default=None),
-    Body: str | None = Form(default=None),
-    NumMedia: str | None = Form(default=None),
-    MediaUrl0: str | None = Form(default=None),
-    MediaContentType0: str | None = Form(default=None),
-    MessageSid: str | None = Form(default=None),
+    x_blooio_signature: str | None = Header(default=None, alias="X-Blooio-Signature"),
 ):
-    """Twilio inbound WhatsApp webhook. Returns empty TwiML immediately."""
-    if From:
-        num_media = int(NumMedia or "0")
-        if num_media > 0 and MediaUrl0 and MediaContentType0:
-            background_tasks.add_task(
-                _handle_media_message, From, Body or "", MediaUrl0, MediaContentType0
-            )
-        elif Body is not None:
-            logger.info("Inbound WhatsApp MessageSid=%s", MessageSid)
-            background_tasks.add_task(_handle_message, From, Body, MessageSid)
-    return Response(content=_TWIML_EMPTY, media_type="application/xml")
+    """
+    Blooio inbound message webhook.
+    Configure webhook URL to: https://<host>/api/v1/sms  (type: message or all)
+    """
+    from app.services.blooio import verify_webhook_signature
+
+    raw_body = await request.body()
+    if not verify_webhook_signature(raw_body, x_blooio_signature):
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+    try:
+        raw: dict[str, Any] = json.loads(raw_body.decode("utf-8") or "{}")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Expected JSON body")
+
+    # Support both flat and nested { data: {...} } shapes
+    data = raw.get("data") if isinstance(raw.get("data"), dict) else raw
+    event = (raw.get("event") or data.get("event") or "").strip()
+
+    # Ignore non-inbound events (status, delivered, etc.)
+    if event and event not in {"message.received", "message"}:
+        return {"ok": True}
+
+    from_number = (
+        data.get("sender")
+        or data.get("external_id")
+        or data.get("from")
+        or data.get("from_number")
+    )
+    if not from_number:
+        return {"ok": True}
+
+    body = data.get("text") or data.get("content") or ""
+    message_id = data.get("message_id") or data.get("id")
+    media_url = _first_attachment_url(data.get("attachments")) or (
+        (data.get("media_url") or "").strip() or None
+    )
+
+    if media_url:
+        background_tasks.add_task(
+            _handle_media_message, from_number, body, media_url
+        )
+    elif body:
+        logger.info(
+            "Inbound Blooio message_id=%s protocol=%s",
+            message_id,
+            data.get("protocol"),
+        )
+        background_tasks.add_task(
+            _handle_message, from_number, body, message_id
+        )
+
+    return {"ok": True}
 
 
 # ── Digest trigger (internal) ─────────────────────────────────────────────

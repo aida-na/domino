@@ -158,9 +158,9 @@ async def send_weekly_digests(force: bool = False) -> dict:
                     sent_count += 1
                 else:
                     # Ask for email — do NOT mark items as sent yet so they're included when we retry
-                    from app.api.endpoints.auth import _send_whatsapp
+                    from app.api.endpoints.auth import _send_message
                     from sqlalchemy import update as _update
-                    _send_whatsapp(user.phone, "what's your email? i'll send your weekly digest there. reply with your email or 'skip'.")
+                    _send_message(user.phone, "what's your email? i'll send your weekly digest there. reply with your email or 'skip'.")
                     await db.execute(_update(DominoUser).where(DominoUser.phone == user.phone).values(email_pending=True))
                     await db.commit()
                     skipped_count += 1

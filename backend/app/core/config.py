@@ -27,10 +27,10 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
     EMAIL_FROM: str = "Domino <noreply@resend.dev>"
 
-    # Twilio / WhatsApp
-    TWILIO_ACCOUNT_SID: str = ""
-    TWILIO_AUTH_TOKEN: str = ""
-    TWILIO_PHONE_NUMBER: str = ""
+    # Blooio (iMessage / SMS)
+    BLOOIO_API_KEY: str = ""
+    BLOOIO_PHONE_NUMBER: str = ""  # optional; omit to use API key's default number
+    BLOOIO_WEBHOOK_SECRET: str = ""  # signing_secret from webhook create (whsec_…)
     DOMINO_INTERNAL_SECRET: str = ""
 
     # CORS

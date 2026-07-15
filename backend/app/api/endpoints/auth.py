@@ -20,7 +20,6 @@ from app.models.domino import DominoOTP, DominoSession, DominoUser
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth")
 
-WHATSAPP_PREFIX = "whatsapp:"
 OTP_TTL_MINUTES = 10
 MIN_PASSWORD_LEN = 8
 
@@ -56,14 +55,18 @@ def _parse_bearer_session_uuid(authorization: str | None) -> UUID | None:
         return None
 
 
-def _strip_whatsapp(phone: str) -> str:
-    """Remove whatsapp: prefix if present."""
-    return phone.replace(WHATSAPP_PREFIX, "").strip()
+def _normalize_inbound_phone(phone: str) -> str:
+    """Strip legacy whatsapp: prefix if present; return E.164-ish string."""
+    return phone.replace("whatsapp:", "").strip()
+
+
+# Back-compat for webhook imports
+_strip_whatsapp = _normalize_inbound_phone
 
 
 def normalize_domino_phone(raw: str) -> str:
     """
-    Normalize user input to E.164 (+...) to match DominoUser.phone (Twilio-style).
+    Normalize user input to E.164 (+...) to match DominoUser.phone.
     US: 10 digits -> +1; 11 digits starting with 1 -> +1...
     If input starts with +, digits after + are used as E.164.
     """
@@ -86,33 +89,23 @@ def normalize_domino_phone(raw: str) -> str:
     raise HTTPException(status_code=400, detail="Invalid phone number")
 
 
-def _send_whatsapp(to: str, body: str) -> None:
-    """Send WhatsApp message via Twilio. Falls back to console in dev."""
-    if not settings.TWILIO_ACCOUNT_SID or not settings.TWILIO_AUTH_TOKEN:
-        print(f"\n[DOMINO DEV] WhatsApp to {to}: {body}\n", flush=True)
-        return
-    from twilio.rest import Client  # type: ignore
-    client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
-    client.messages.create(
-        body=body,
-        from_=f"{WHATSAPP_PREFIX}{settings.TWILIO_PHONE_NUMBER}",
-        to=f"{WHATSAPP_PREFIX}{to}",
-    )
+def _send_message(to: str, body: str) -> None:
+    """Send iMessage/SMS via Blooio. Falls back to console in dev."""
+    from app.services.blooio import send_message
+    send_message(to, body)
 
 
-def _react_whatsapp(to: str, emoji: str, message_sid: str) -> None:
-    """Send an emoji reaction to an inbound WhatsApp message. Falls back to console in dev."""
-    if not settings.TWILIO_ACCOUNT_SID or not settings.TWILIO_AUTH_TOKEN:
-        print(f"\n[DOMINO DEV] React {emoji} on {message_sid} to {to}\n", flush=True)
-        return
-    from twilio.rest import Client  # type: ignore
-    client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
-    client.messages.create(
-        body=emoji,
-        from_=f"{WHATSAPP_PREFIX}{settings.TWILIO_PHONE_NUMBER}",
-        to=f"{WHATSAPP_PREFIX}{to}",
-        persistent_action=[f"react:{emoji}:{message_sid}"],
-    )
+# Back-compat alias used by older call sites during migration
+_send_whatsapp = _send_message
+
+
+def _react_message(chat_id: str, message_id: str, emoji: str = "👍") -> None:
+    """Send an iMessage tapback via Blooio. Falls back to console in dev."""
+    from app.services.blooio import send_reaction
+    send_reaction(chat_id, message_id, emoji)
+
+
+_react_whatsapp = _react_message
 
 
 async def create_session_for_phone(phone: str, db: AsyncSession) -> tuple[str, bool]:
@@ -189,7 +182,7 @@ async def request_magic_link(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    If this phone already has a domino account, create a new session and WhatsApp a dashboard link.
+    If this phone already has a domino account, create a new session and text a dashboard link.
     Response is always the same to avoid account enumeration.
     """
     phone = normalize_domino_phone(body.phone)
@@ -199,7 +192,7 @@ async def request_magic_link(
         try:
             session_token, _ = await create_session_for_phone(phone, db)
             link = build_magic_link(session_token)
-            _send_whatsapp(phone, f"here's your dashboard link:\n{link}")
+            _send_message(phone, f"here's your dashboard link:\n{link}")
         except Exception as e:
             logger.exception("magic-link send failed for %s: %s", phone, e)
     return {"ok": True}
@@ -232,7 +225,7 @@ async def logout(
 
 
 # ---------------------------------------------------------------------------
-# OTP sign-in (WhatsApp code)
+# OTP sign-in (iMessage / SMS code)
 # ---------------------------------------------------------------------------
 
 
@@ -247,7 +240,7 @@ async def request_otp(
     body: OtpRequestBody,
     db: AsyncSession = Depends(get_db),
 ):
-    """Send a 6-digit sign-in code via WhatsApp. User is created on first successful verify."""
+    """Send a 6-digit sign-in code via Blooio. User is created on first successful verify."""
     phone = normalize_domino_phone(body.phone)
     code = f"{secrets.randbelow(900_000) + 100_000:06d}"
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=OTP_TTL_MINUTES)
@@ -257,12 +250,12 @@ async def request_otp(
     await db.commit()
 
     try:
-        _send_whatsapp(
+        _send_message(
             phone,
             f"your domino sign-in code: {code}\n\nit expires in {OTP_TTL_MINUTES} minutes.",
         )
     except Exception as e:
-        logger.exception("OTP WhatsApp send failed for %s: %s", phone, e)
+        logger.exception("OTP send failed for %s: %s", phone, e)
 
     return {"ok": True}
 

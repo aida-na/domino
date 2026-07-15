@@ -468,7 +468,7 @@ function MapContent() {
 
         {topicNodes.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center px-8 py-20">
-            save content via WhatsApp and your topics will appear here.
+            save content via iMessage and your topics will appear here.
           </p>
         ) : (
           <AnimatePresence mode="wait">

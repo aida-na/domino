@@ -301,7 +301,7 @@ export default function DominoLandingPage() {
         {/* how it works */}
         <div style={{ marginTop: 36, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           {[
-            { step: '01', text: 'send any link, thought, or image to domino on whatsapp' },
+            { step: '01', text: 'send any link, thought, or image to domino over iMessage' },
             { step: '02', text: 'we extract the full text and summarise the key ideas with ai' },
             { step: '03', text: 'search, browse, and chat with everything you\'ve ever saved' },
             { step: '04', text: 'weekly digest resurfaces your best saves at the right moment' },

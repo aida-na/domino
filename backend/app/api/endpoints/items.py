@@ -10,7 +10,6 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.api.endpoints.auth import get_domino_user
 from app.db.session import get_db
 from app.models.domino import DominoItem, DominoUser
@@ -222,19 +221,20 @@ async def media_proxy(
             headers={"Cache-Control": "private, max-age=86400"},
         )
 
-    # Twilio URL
-    if "twilio.com" not in url.lower():
+    # External media (Blooio CDN, legacy Sendblue/Twilio URLs still in DB)
+    lower = url.lower()
+    if not any(
+        host in lower
+        for host in ("blooio.com", "sendblue.co", "sendblue.com", "twilio.com")
+    ):
         raise HTTPException(status_code=400, detail="Unsupported media URL")
 
     async with httpx.AsyncClient(timeout=30) as client:
         try:
-            resp = await client.get(
-                url,
-                auth=(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN),
-            )
+            resp = await client.get(url)
             resp.raise_for_status()
         except httpx.HTTPError as e:
-            logger.warning("media-proxy Twilio fetch failed for %s: %s", url, e)
+            logger.warning("media-proxy fetch failed for %s: %s", url, e)
             raise HTTPException(status_code=502, detail=f"Failed to fetch media: {e}")
 
     return StreamingResponse(

@@ -192,7 +192,7 @@ async def health():
 
 @app.get("/health/db")
 async def health_db():
-    """Diagnose Cloud SQL connectivity without touching auth/Twilio."""
+    """Diagnose Cloud SQL connectivity without touching auth/messaging."""
     try:
         async with asyncio.timeout(10):
             async with engine.begin() as conn:
