@@ -459,6 +459,17 @@ async def _handle_message(
     from app.api.endpoints.auth import _normalize_inbound_phone
 
     phone = _normalize_inbound_phone(raw_from)
+    # Never persist Blooio CDN preview URLs as the saved item
+    if _is_blooio_cdn(body.strip()):
+        logger.warning(
+            "Refusing to save Blooio CDN URL as item for %s: %s",
+            phone[-4:],
+            body[:120],
+        )
+        return
+    canonical = _first_non_blooio_url(body)
+    if canonical and canonical != body.strip():
+        body = canonical
 
     async with AsyncSessionLocal() as db:
         try:
@@ -530,20 +541,90 @@ async def _handle_media_message(
             logger.error("Media handler error for %s: %s", phone, e, exc_info=True)
 
 
+_HTTP_URL_RE = re.compile(r"https?://[^\s<>\"')\]]+", re.IGNORECASE)
+
+
+def _is_blooio_cdn(url: str) -> bool:
+    """True for Blooio-hosted attachment/preview CDN URLs (not the user's link)."""
+    try:
+        from urllib.parse import urlparse
+        host = (urlparse(url).hostname or "").lower()
+    except Exception:
+        host = ""
+    return host.endswith("blooio.com") or "bucket.blooio.com" in url.lower()
+
+
+def _clean_url(url: str) -> str:
+    return url.strip().rstrip(".,);]>\"'")
+
+
+def _first_non_blooio_url(text: str | None) -> str | None:
+    if not text:
+        return None
+    for match in _HTTP_URL_RE.finditer(text):
+        candidate = _clean_url(match.group(0))
+        if candidate.startswith("http") and not _is_blooio_cdn(candidate):
+            return candidate
+    return None
+
+
+def _iter_attachments(attachments: Any) -> list[Any]:
+    if not attachments:
+        return []
+    if isinstance(attachments, list):
+        return attachments
+    return [attachments]
+
+
 def _first_attachment_url(attachments: Any) -> str | None:
     """Extract the first media URL from a Blooio attachments field."""
-    if not attachments:
-        return None
-    if isinstance(attachments, str) and attachments.startswith("http"):
-        return attachments
-    if isinstance(attachments, list) and attachments:
-        first = attachments[0]
-        if isinstance(first, str) and first.startswith("http"):
-            return first
-        if isinstance(first, dict):
-            url = first.get("url") or first.get("media_url")
+    for item in _iter_attachments(attachments):
+        if isinstance(item, str) and item.startswith("http"):
+            return item
+        if isinstance(item, dict):
+            url = item.get("url") or item.get("media_url")
             if isinstance(url, str) and url.startswith("http"):
                 return url
+    return None
+
+
+def _url_from_attachments(attachments: Any) -> str | None:
+    """
+    iMessage link shares often arrive as a Blooio CDN preview image.
+    Prefer any original/source URL on the attachment object; never return CDN hosts.
+    """
+    for item in _iter_attachments(attachments):
+        if isinstance(item, str):
+            # Bare attachment URL — only keep if it's not Blooio CDN
+            if item.startswith("http") and not _is_blooio_cdn(item):
+                return _clean_url(item)
+            continue
+        if not isinstance(item, dict):
+            continue
+        for key in (
+            "original_url",
+            "source_url",
+            "page_url",
+            "link",
+            "href",
+            "canonical_url",
+            "website_url",
+        ):
+            val = item.get(key)
+            if isinstance(val, str) and val.startswith("http") and not _is_blooio_cdn(val):
+                return _clean_url(val)
+        # Filename / name sometimes carries the shared URL
+        for key in ("name", "filename", "file_name", "transfer_name", "title"):
+            val = item.get(key)
+            found = _first_non_blooio_url(val if isinstance(val, str) else None)
+            if found:
+                return found
+        # Nested metadata
+        meta = item.get("metadata") or item.get("meta")
+        if isinstance(meta, dict):
+            nested = _url_from_attachments([meta])
+            if nested:
+                return nested
     return None
 
 
@@ -561,10 +642,10 @@ def _extract_text(data: dict[str, Any]) -> str:
         if isinstance(inner, str) and inner.strip():
             return inner
 
-    # URL-balloon / link-only messages sometimes leave text empty
+    # URL-balloon fields — skip Blooio CDN (those are preview assets, not the link)
     for key in ("url", "link", "body"):
         val = data.get(key)
-        if isinstance(val, str) and val.startswith("http"):
+        if isinstance(val, str) and val.startswith("http") and not _is_blooio_cdn(val):
             return val
 
     parts = data.get("parts")
@@ -576,10 +657,59 @@ def _extract_text(data: dict[str, Any]) -> str:
             if isinstance(part_text, str) and part_text.strip():
                 return part_text
             part_url = part.get("url")
-            if isinstance(part_url, str) and part_url.startswith("http"):
+            if isinstance(part_url, str) and part_url.startswith("http") and not _is_blooio_cdn(part_url):
                 return part_url
 
     return ""
+
+
+def _resolve_inbound_content(
+    body: str,
+    data: dict[str, Any],
+    raw: dict[str, Any],
+) -> tuple[str | None, str | None]:
+    """
+    Returns (user_url_or_text, media_url).
+    Prefer the user's real link over Blooio preview-attachment CDN URLs.
+    """
+    attachments = data.get("attachments") or raw.get("attachments")
+    media_url = _first_attachment_url(attachments) or (
+        (data.get("media_url") or "").strip() or None
+    )
+    if media_url and _is_blooio_cdn(media_url):
+        # Preview image only — don't treat as the saved item URL
+        preview_cdn = media_url
+        media_url = None
+    else:
+        preview_cdn = None
+
+    user_url = (
+        _first_non_blooio_url(body)
+        or _url_from_attachments(attachments)
+        or _first_non_blooio_url(_extract_text(data))
+        or _first_non_blooio_url(_extract_text(raw))
+    )
+
+    if user_url:
+        return user_url, None
+
+    # No real URL found. Keep non-CDN media (true photos/voice). Drop Blooio previews.
+    if media_url:
+        return (body.strip() or None), media_url
+
+    if preview_cdn:
+        # Log attachment shape so we can map original-URL fields if Blooio adds them
+        try:
+            sample = json.dumps(_iter_attachments(attachments)[:2], default=str)[:800]
+        except Exception:
+            sample = str(_iter_attachments(attachments)[:2])[:800]
+        logger.warning(
+            "Blooio inbound link-preview without original URL cdn=%s body=%r attachments=%s",
+            preview_cdn[:120],
+            (body or "")[:80],
+            sample,
+        )
+    return (body.strip() or None), None
 
 
 _INBOUND_EVENTS = {
@@ -652,32 +782,34 @@ async def blooio_webhook(
 
     body = _extract_text(data) or _extract_text(raw)
     message_id = data.get("message_id") or data.get("id") or raw.get("message_id")
-    media_url = _first_attachment_url(data.get("attachments")) or (
-        (data.get("media_url") or "").strip() or None
-    )
+    save_text, media_url = _resolve_inbound_content(body, data, raw)
 
     logger.info(
-        "Blooio inbound event=%s from=%s message_id=%s text_len=%s has_media=%s protocol=%s",
+        "Blooio inbound event=%s from=%s message_id=%s text_len=%s save=%s has_media=%s protocol=%s",
         event or "(none)",
         str(from_number)[-4:],
         message_id,
         len(body or ""),
+        (save_text or "")[:80],
         bool(media_url),
         data.get("protocol") or raw.get("protocol"),
     )
 
-    if media_url and not (body or "").strip().startswith("http"):
-        # Pure media (or media+caption handled inside image/voice paths)
-        await _handle_media_message(str(from_number), body or "", media_url)
-    elif body:
-        await _handle_message(str(from_number), body, message_id)
+    if save_text and (
+        save_text.startswith("http")
+        or _first_non_blooio_url(save_text)
+        or not media_url
+    ):
+        # Links / notes — never save bucket.blooio.com preview URLs as the item
+        await _handle_message(str(from_number), save_text, message_id)
     elif media_url:
-        await _handle_media_message(str(from_number), "", media_url)
+        await _handle_media_message(str(from_number), body or "", media_url)
     else:
         logger.warning(
-            "Blooio inbound empty body/media message_id=%s keys=%s",
+            "Blooio inbound empty body/media message_id=%s keys=%s data_sample=%s",
             message_id,
             list(data.keys())[:30],
+            {k: data.get(k) for k in list(data.keys())[:12]},
         )
 
     return {"ok": True}
