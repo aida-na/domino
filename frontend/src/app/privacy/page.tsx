@@ -37,7 +37,7 @@ export default function DominoPrivacyPage() {
           <h3 className={h3Class}>a. information you provide</h3>
           <ul className="list-disc pl-5 space-y-1">
             <li>
-              <strong className="font-semibold text-[#1A1208]">message content:</strong> when you text domino,
+              <strong className="font-semibold text-[#1A1208]">message content:</strong> when you iMessage domino,
               we receive what you send — links, notes, thoughts, screenshots, and any other content you choose
               to share.
             </li>
@@ -134,7 +134,7 @@ export default function DominoPrivacyPage() {
           <li>
             <strong className="font-semibold text-[#1A1208]">service providers and subprocessors:</strong> we
             work with third-party companies to help operate, support, and improve the services — including
-            hosting (e.g. google cloud, supabase), messaging infrastructure (e.g. blooio/imessage), ai processing
+            hosting (e.g. google cloud, supabase), messaging infrastructure (e.g. blooio / iMessage), ai processing
             (e.g. google), and analytics. these providers process personal information on our behalf and only
             as instructed by us.
           </li>

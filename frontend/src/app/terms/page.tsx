@@ -59,8 +59,8 @@ export default function DominoTermsPage() {
         <div className="space-y-2">
           <h3 className={h3Class}>2.1 overview</h3>
           <p>
-            domino is a messaging-based service that lets you save links, notes, and ideas by texting them to
-            our number (imessage / sms). we index your saves, extract key ideas, send you periodic digests, and — over
+            domino is an iMessage-based service that lets you save links, notes, and ideas by messaging them to
+            our number. we index your saves, extract key ideas, send you periodic digests, and — over
             time — help you discover connections across what you&apos;ve saved and find people thinking about
             similar topics.
           </p>
@@ -76,7 +76,7 @@ export default function DominoTermsPage() {
         <div className="space-y-2">
           <h3 className={h3Class}>2.3 third-party services</h3>
           <p>
-            the services integrate with third-party messaging platforms (such as imessage / sms via blooio) and use third-party providers
+            the services integrate with third-party messaging platforms (such as iMessage via blooio) and use third-party providers
             for hosting, AI processing, and other functions. when you use the services, your data may be
             processed by these providers solely to deliver the requested functionality.
           </p>

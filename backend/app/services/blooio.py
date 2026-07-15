@@ -17,6 +17,19 @@ logger = logging.getLogger(__name__)
 
 BLOOIO_API_BASE = "https://api.blooio.com/v2/api"
 
+# Reuse TLS connections — creating a Client per send adds ~200–800ms each time.
+_http: httpx.Client | None = None
+
+
+def _client() -> httpx.Client:
+    global _http
+    if _http is None or _http.is_closed:
+        _http = httpx.Client(
+            timeout=httpx.Timeout(15.0, connect=5.0),
+            headers={"User-Agent": "domino-api/1.0"},
+        )
+    return _http
+
 # Map common emoji ack → Blooio classic tapback types (prefixed with +)
 _EMOJI_TO_REACTION = {
     "👍": "like",
@@ -28,6 +41,15 @@ _EMOJI_TO_REACTION = {
     "❗️": "emphasize",
     "❓": "question",
 }
+
+
+class BlooioError(RuntimeError):
+    """Raised when Blooio rejects a send/react request."""
+
+    def __init__(self, message: str, *, status_code: int | None = None, body: str | None = None):
+        super().__init__(message)
+        self.status_code = status_code
+        self.body = body
 
 
 def _configured() -> bool:
@@ -46,30 +68,89 @@ def _chat_path(phone: str) -> str:
     return quote(phone, safe="")
 
 
+def _raise_for_blooio(resp: httpx.Response, *, action: str) -> None:
+    if resp.is_success:
+        return
+    body = (resp.text or "")[:500]
+    # Blooio documents 503 as "no active number available"
+    if resp.status_code == 503:
+        raise BlooioError(
+            "Blooio has no active sender for this API key (503). "
+            "In the Blooio dashboard open Channels and drag your number onto this API key; "
+            "confirm the line shows Active (not provisioning/offline). "
+            "Also prefer a key shaped like bl_live_… if you still have an older api_… key.",
+            status_code=503,
+            body=body,
+        )
+    raise BlooioError(
+        f"Blooio {action} failed ({resp.status_code}): {body or resp.reason_phrase}",
+        status_code=resp.status_code,
+        body=body,
+    )
+
+
 def send_message(to: str, body: str, *, attachments: list[str] | None = None) -> dict[str, Any] | None:
     """
     Send an iMessage/SMS via Blooio.
     Falls back to console print when credentials are missing (local dev).
+    Successful sends return HTTP 202 (accepted/queued).
     """
     if not _configured():
+        logger.error(
+            "BLOOIO_API_KEY is not set — cannot send to %s (message printed to stdout only)",
+            to,
+        )
         print(f"\n[DOMINO DEV] Message to {to}: {body}\n", flush=True)
         return None
 
+    # Omit from_number by default — Blooio auto-selects from the key's Channels pool.
+    # Only pin a number when explicitly configured AND you have assigned it under Channels.
     payload: dict[str, Any] = {"text": body}
     if attachments:
         payload["attachments"] = attachments
-    if settings.BLOOIO_PHONE_NUMBER:
-        payload["from_number"] = settings.BLOOIO_PHONE_NUMBER
+
+    from_number = (settings.BLOOIO_PHONE_NUMBER or "").strip()
+    # Pin when configured — one hop, no auto-select → pin retry round-trip.
+    if from_number:
+        payload["from_number"] = from_number
+
+    url = f"{BLOOIO_API_BASE}/chats/{_chat_path(to)}/messages"
+    t0 = time.monotonic()
 
     try:
-        with httpx.Client(timeout=30) as client:
-            resp = client.post(
-                f"{BLOOIO_API_BASE}/chats/{_chat_path(to)}/messages",
-                headers=_auth_headers(),
-                json=payload,
+        client = _client()
+        resp = client.post(url, headers=_auth_headers(), json=payload)
+
+        # If pin failed (number not on key), fall back to pool auto-select once
+        if not resp.is_success and from_number and resp.status_code in {400, 403, 503}:
+            logger.warning(
+                "Blooio from_number=%s failed (%s); retrying auto-select. body=%s",
+                from_number,
+                resp.status_code,
+                (resp.text or "")[:300],
             )
-            resp.raise_for_status()
-            return resp.json()
+            payload.pop("from_number", None)
+            resp = client.post(url, headers=_auth_headers(), json=payload)
+
+        _raise_for_blooio(resp, action="send_message")
+        data = resp.json()
+        logger.info(
+            "Blooio send ok to %s http=%s message_id=%s elapsed_ms=%d",
+            to,
+            resp.status_code,
+            data.get("message_id") if isinstance(data, dict) else None,
+            int((time.monotonic() - t0) * 1000),
+        )
+        return data
+    except BlooioError as e:
+        logger.error(
+            "Blooio send_message to %s after %dms: %s body=%s",
+            to,
+            int((time.monotonic() - t0) * 1000),
+            e,
+            e.body,
+        )
+        raise
     except Exception as e:
         logger.exception("Blooio send_message failed to %s: %s", to, e)
         raise
@@ -93,14 +174,21 @@ def send_reaction(chat_id: str, message_id: str, emoji_or_type: str = "like") ->
         return None
 
     try:
-        with httpx.Client(timeout=30) as client:
-            resp = client.post(
-                f"{BLOOIO_API_BASE}/chats/{_chat_path(chat_id)}/messages/{quote(message_id, safe='')}/reactions",
-                headers=_auth_headers(),
-                json={"reaction": reaction_value, "direction": "inbound"},
+        resp = _client().post(
+            f"{BLOOIO_API_BASE}/chats/{_chat_path(chat_id)}/messages/{quote(message_id, safe='')}/reactions",
+            headers=_auth_headers(),
+            json={"reaction": reaction_value, "direction": "inbound"},
+        )
+        if not resp.is_success:
+            logger.warning(
+                "Blooio send_reaction failed for %s/%s: %s %s",
+                chat_id,
+                message_id,
+                resp.status_code,
+                (resp.text or "")[:300],
             )
-            resp.raise_for_status()
-            return resp.json()
+            return None
+        return resp.json()
     except Exception as e:
         # Tapbacks are best-effort; don't fail the save path.
         logger.warning("Blooio send_reaction failed for %s/%s: %s", chat_id, message_id, e)

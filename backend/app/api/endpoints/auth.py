@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 import bcrypt
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +22,15 @@ router = APIRouter(prefix="/auth")
 
 OTP_TTL_MINUTES = 10
 MIN_PASSWORD_LEN = 8
+
+
+def _send_message_safe(to: str, body: str, *, context: str) -> None:
+    """Background send — never raises into the request path."""
+    try:
+        _send_message(to, body)
+        logger.info("%s: queued send for phone ending %s", context, to[-4:])
+    except Exception as e:
+        logger.exception("%s: send failed for phone ending %s: %s", context, to[-4:], e)
 
 
 def _hash_domino_password(password: str) -> str:
@@ -179,6 +188,7 @@ class MagicLinkRequest(BaseModel):
 async def request_magic_link(
     request: Request,
     body: MagicLinkRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -188,13 +198,21 @@ async def request_magic_link(
     phone = normalize_domino_phone(body.phone)
     result = await db.execute(select(DominoUser).where(DominoUser.phone == phone))
     user = result.scalar_one_or_none()
-    if user:
-        try:
-            session_token, _ = await create_session_for_phone(phone, db)
-            link = build_magic_link(session_token)
-            _send_message(phone, f"here's your dashboard link:\n{link}")
-        except Exception as e:
-            logger.exception("magic-link send failed for %s: %s", phone, e)
+    if not user:
+        # Still 200 — do not reveal whether the account exists
+        logger.info("magic-link: no account for phone ending %s — skipped send", phone[-4:])
+        return {"ok": True}
+    try:
+        session_token, _ = await create_session_for_phone(phone, db)
+        link = build_magic_link(session_token)
+        background_tasks.add_task(
+            _send_message_safe,
+            phone,
+            f"here's your dashboard link:\n{link}",
+            context="magic-link",
+        )
+    except Exception as e:
+        logger.exception("magic-link prepare failed for phone ending %s: %s", phone[-4:], e)
     return {"ok": True}
 
 
@@ -238,6 +256,7 @@ class OtpRequestBody(BaseModel):
 async def request_otp(
     request: Request,
     body: OtpRequestBody,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     """Send a 6-digit sign-in code via Blooio. User is created on first successful verify."""
@@ -249,14 +268,12 @@ async def request_otp(
     db.add(otp)
     await db.commit()
 
-    try:
-        _send_message(
-            phone,
-            f"your domino sign-in code: {code}\n\nit expires in {OTP_TTL_MINUTES} minutes.",
-        )
-    except Exception as e:
-        logger.exception("OTP send failed for %s: %s", phone, e)
-
+    background_tasks.add_task(
+        _send_message_safe,
+        phone,
+        f"your domino sign-in code: {code}\n\nit expires in {OTP_TTL_MINUTES} minutes.",
+        context="OTP",
+    )
     return {"ok": True}
 
 

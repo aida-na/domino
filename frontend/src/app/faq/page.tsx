@@ -13,7 +13,7 @@ export default function DominoFaqPage() {
       <section className="space-y-2">
         <h2 className="text-base font-bold text-[#1A1208]">what is domino?</h2>
         <p>
-          domino is a text-first way to save links, notes, and ideas. we index what you send, resurface
+          domino is an iMessage-first way to save links, notes, and ideas. we index what you send, resurface
           it on a rhythm that works for you, and (over time) help you see patterns across what you care
           about.
         </p>
@@ -21,7 +21,7 @@ export default function DominoFaqPage() {
       <section className="space-y-2 pt-2">
         <h2 className="text-base font-bold text-[#1A1208]">how do i get started?</h2>
         <p>
-          message our number from the{' '}
+          iMessage our number from the{' '}
           <Link href="/" className="font-semibold text-[#ED4715] underline underline-offset-2">
             domino home page
           </Link>
@@ -30,7 +30,7 @@ export default function DominoFaqPage() {
       </section>
       <section className="space-y-2 pt-2">
         <h2 className="text-base font-bold text-[#1A1208]">do i need to install an app?</h2>
-        <p>nope. domino works through messaging. if you can text, you can use domino.</p>
+        <p>nope. domino works over iMessage. if you can message, you can use domino.</p>
       </section>
       <section className="space-y-2 pt-2">
         <h2 className="text-base font-bold text-[#1A1208]">what about privacy?</h2>
