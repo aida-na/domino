@@ -7,7 +7,7 @@ from typing import Any
 
 _EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -84,6 +84,7 @@ async def _handle_new_user(phone: str, body: str, db: AsyncSession) -> None:
     await _log_message(db, phone, "outbound", email_prompt)
 
     await _save_item(phone, body, db)
+    await db.commit()
 
 
 async def _handle_login(phone: str, db: AsyncSession) -> None:
@@ -546,22 +547,71 @@ def _first_attachment_url(attachments: Any) -> str | None:
     return None
 
 
+def _extract_text(data: dict[str, Any]) -> str:
+    """Pull message text from flat or nested Blooio payloads (incl. content objects)."""
+    text = data.get("text")
+    if isinstance(text, str) and text.strip():
+        return text
+
+    content = data.get("content")
+    if isinstance(content, str) and content.strip():
+        return content
+    if isinstance(content, dict):
+        inner = content.get("text") or content.get("body")
+        if isinstance(inner, str) and inner.strip():
+            return inner
+
+    # URL-balloon / link-only messages sometimes leave text empty
+    for key in ("url", "link", "body"):
+        val = data.get(key)
+        if isinstance(val, str) and val.startswith("http"):
+            return val
+
+    parts = data.get("parts")
+    if isinstance(parts, list):
+        for part in parts:
+            if not isinstance(part, dict):
+                continue
+            part_text = part.get("text")
+            if isinstance(part_text, str) and part_text.strip():
+                return part_text
+            part_url = part.get("url")
+            if isinstance(part_url, str) and part_url.startswith("http"):
+                return part_url
+
+    return ""
+
+
+_INBOUND_EVENTS = {
+    "message.received",
+    "message",
+    "received",
+}
+
+
 # ── Blooio webhook endpoint ───────────────────────────────────────────────
 
 @router.post("/sms")
 async def blooio_webhook(
     request: Request,
-    background_tasks: BackgroundTasks,
     x_blooio_signature: str | None = Header(default=None, alias="X-Blooio-Signature"),
 ):
     """
     Blooio inbound message webhook.
     Configure webhook URL to: https://<host>/api/v1/sms  (type: message or all)
+
+    Handlers run inline (not BackgroundTasks) so Cloud Run CPU isn't frozen
+    after the HTTP response — otherwise saves silently never complete.
     """
     from app.services.blooio import verify_webhook_signature
 
     raw_body = await request.body()
     if not verify_webhook_signature(raw_body, x_blooio_signature):
+        logger.warning(
+            "Blooio webhook rejected: bad/missing signature (has_header=%s body_len=%s)",
+            bool(x_blooio_signature),
+            len(raw_body),
+        )
         raise HTTPException(status_code=401, detail="Invalid webhook signature")
 
     try:
@@ -571,10 +621,21 @@ async def blooio_webhook(
 
     # Support both flat and nested { data: {...} } shapes
     data = raw.get("data") if isinstance(raw.get("data"), dict) else raw
-    event = (raw.get("event") or data.get("event") or "").strip()
+    event = (
+        raw.get("event")
+        or raw.get("type")
+        or data.get("event")
+        or data.get("type")
+        or ""
+    )
+    if isinstance(event, str):
+        event = event.strip()
+    else:
+        event = ""
 
-    # Ignore non-inbound events (status, delivered, etc.)
-    if event and event not in {"message.received", "message"}:
+    # Ignore outbound/status callbacks
+    if event and event not in _INBOUND_EVENTS and not event.endswith(".received"):
+        logger.info("Blooio webhook ignored event=%s", event)
         return {"ok": True}
 
     from_number = (
@@ -582,28 +643,41 @@ async def blooio_webhook(
         or data.get("external_id")
         or data.get("from")
         or data.get("from_number")
+        or raw.get("sender")
+        or raw.get("external_id")
     )
     if not from_number:
+        logger.warning("Blooio webhook missing sender; keys=%s", list(raw.keys())[:20])
         return {"ok": True}
 
-    body = data.get("text") or data.get("content") or ""
-    message_id = data.get("message_id") or data.get("id")
+    body = _extract_text(data) or _extract_text(raw)
+    message_id = data.get("message_id") or data.get("id") or raw.get("message_id")
     media_url = _first_attachment_url(data.get("attachments")) or (
         (data.get("media_url") or "").strip() or None
     )
 
-    if media_url:
-        background_tasks.add_task(
-            _handle_media_message, from_number, body, media_url
-        )
+    logger.info(
+        "Blooio inbound event=%s from=%s message_id=%s text_len=%s has_media=%s protocol=%s",
+        event or "(none)",
+        str(from_number)[-4:],
+        message_id,
+        len(body or ""),
+        bool(media_url),
+        data.get("protocol") or raw.get("protocol"),
+    )
+
+    if media_url and not (body or "").strip().startswith("http"):
+        # Pure media (or media+caption handled inside image/voice paths)
+        await _handle_media_message(str(from_number), body or "", media_url)
     elif body:
-        logger.info(
-            "Inbound Blooio message_id=%s protocol=%s",
+        await _handle_message(str(from_number), body, message_id)
+    elif media_url:
+        await _handle_media_message(str(from_number), "", media_url)
+    else:
+        logger.warning(
+            "Blooio inbound empty body/media message_id=%s keys=%s",
             message_id,
-            data.get("protocol"),
-        )
-        background_tasks.add_task(
-            _handle_message, from_number, body, message_id
+            list(data.keys())[:30],
         )
 
     return {"ok": True}
