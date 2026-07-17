@@ -41,3 +41,9 @@ Thumbs.db
 # Misc
 *.log
 *.pid
+*.tsbuildinfo
+
+# Xcode
+ios/**/xcuserdata/
+ios/**/*.xcuserstate
+ios/build/

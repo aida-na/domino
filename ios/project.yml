@@ -1,0 +1,81 @@
+name: Domino
+options:
+  bundleIdPrefix: fyi.domino
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "15.0"
+configFiles:
+  Debug: Config/Debug.xcconfig
+  Release: Config/Release.xcconfig
+settings:
+  SWIFT_VERSION: "5.9"
+targets:
+  Domino:
+    type: application
+    platform: iOS
+    sources:
+      - path: Domino
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: fyi.domino.app
+      INFOPLIST_FILE: Domino/Resources/Info.plist
+      CODE_SIGN_ENTITLEMENTS: Domino/Resources/Domino.entitlements
+      CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: "YES"
+      ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      TARGETED_DEVICE_FAMILY: "1,2"
+      CURRENT_PROJECT_VERSION: 1
+      MARKETING_VERSION: 1.0
+    entitlements:
+      path: Domino/Resources/Domino.entitlements
+      properties:
+        com.apple.developer.associated-domains:
+          - applinks:domino.fyi
+          - applinks:www.domino.fyi
+        com.apple.security.application-groups:
+          - group.fyi.domino.app
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)group.fyi.domino.app
+    dependencies:
+      - target: DominoShare
+        embed: true
+    info:
+      path: Domino/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: domino
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen:
+          UIColorName: systemBackgroundColor
+        CFBundleURLTypes:
+          - CFBundleURLName: fyi.domino.app
+            CFBundleURLSchemes:
+              - domino
+        AppIdentifierPrefix: $(AppIdentifierPrefix)
+        UIAppFonts:
+          - Figtree-Variable.ttf
+          - Newsreader-Variable.ttf
+          - Basteleur-Bold.ttf
+          - Basteleur-Moonlight.ttf
+
+  DominoShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: DominoShare
+      - path: Domino/Core
+      - path: Domino/App/AppConfig.swift
+      - path: Domino/Design/DominoColors.swift
+      - path: Domino/Design/DominoTypography.swift
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: fyi.domino.app.share
+      INFOPLIST_FILE: DominoShare/Info.plist
+      CODE_SIGN_ENTITLEMENTS: DominoShare/DominoShare.entitlements
+      CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: "YES"
+      SKIP_INSTALL: YES
+      CURRENT_PROJECT_VERSION: 1
+      MARKETING_VERSION: 1.0
+    entitlements:
+      path: DominoShare/DominoShare.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.fyi.domino.app
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)group.fyi.domino.app

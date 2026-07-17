@@ -14,12 +14,12 @@ const h3Class = 'text-sm font-bold text-[#1A1208]';
 export default function DominoPrivacyPage() {
   return (
     <DominoSubpage title="privacy policy">
-      <p className="text-xs text-[#9A9080]">effective date: april 1, 2026</p>
+      <p className="text-xs text-[#9A9080]">effective date: july 16, 2026</p>
       <p>
         at daily labs (&quot;domino,&quot; &quot;we,&quot; &quot;our,&quot; or &quot;us&quot;), your privacy
         is a priority. this privacy policy explains how we collect, use, share, and protect personal
-        information when you use our messaging service, website, web dashboard, and related features
-        (together, the &quot;services&quot;).
+        information when you use our messaging service, website, web dashboard, iOS app (including the
+        Safari share extension), and related features (together, the &quot;services&quot;).
       </p>
       <p>
         this policy applies to all users of domino. by using the services, you acknowledge that you have
@@ -37,13 +37,13 @@ export default function DominoPrivacyPage() {
           <h3 className={h3Class}>a. information you provide</h3>
           <ul className="list-disc pl-5 space-y-1">
             <li>
-              <strong className="font-semibold text-[#1A1208]">message content:</strong> when you iMessage domino,
-              we receive what you send — links, notes, thoughts, screenshots, and any other content you choose
-              to share.
+              <strong className="font-semibold text-[#1A1208]">message content:</strong> when you iMessage
+              domino — or save via the web dashboard or iOS app / Safari share extension — we receive what
+              you send — links, notes, thoughts, screenshots, and any other content you choose to share.
             </li>
             <li>
               <strong className="font-semibold text-[#1A1208]">phone number:</strong> your phone number serves
-              as your account identifier and is received when you message us.
+              as your account identifier and is received when you message us or sign in on web or iOS.
             </li>
             <li>
               <strong className="font-semibold text-[#1A1208]">communications with us:</strong> any
@@ -68,7 +68,12 @@ export default function DominoPrivacyPage() {
             </li>
             <li>
               <strong className="font-semibold text-[#1A1208]">cookies and local storage:</strong> currently
-              minimal — limited to essential session tokens needed for authentication.
+              minimal — limited to essential session tokens needed for authentication on the web dashboard.
+            </li>
+            <li>
+              <strong className="font-semibold text-[#1A1208]">iOS app credentials:</strong> session tokens
+              are stored in the device Keychain (shared with the Safari share extension via an App Group) so
+              you stay signed in. we do not use advertising identifiers or App Tracking Transparency.
             </li>
           </ul>
         </div>
@@ -179,10 +184,10 @@ export default function DominoPrivacyPage() {
             <strong className="font-semibold text-[#1A1208]">opt out of messages:</strong> reply STOP to stop
             receiving domino messages at any time.
           </li>
-          <li>
-            <strong className="font-semibold text-[#1A1208]">delete your saves:</strong> remove individual
-            saves from the web dashboard.
-          </li>
+            <li>
+              <strong className="font-semibold text-[#1A1208]">delete your saves:</strong> remove individual
+              saves from the web dashboard or iOS app.
+            </li>
           <li>
             <strong className="font-semibold text-[#1A1208]">access and correction:</strong> request access to
             your personal information and ask us to correct inaccuracies.

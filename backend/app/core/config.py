@@ -39,8 +39,11 @@ class Settings(BaseSettings):
         "https://domino.fyi",
         "https://www.domino.fyi",
     ]
-    FRONTEND_URL: Optional[str] = None
-    BACKEND_CORS_ORIGIN_REGEX: Optional[str] = r"^https://(domino\.fyi|domino[a-z0-9\-]*\.vercel\.app)$"
+    # Prefer www while apex→www redirect remains (Apple AASA cannot follow redirects).
+    FRONTEND_URL: Optional[str] = "https://www.domino.fyi"
+    BACKEND_CORS_ORIGIN_REGEX: Optional[str] = (
+        r"^https://((www\.)?domino\.fyi|domino[a-z0-9\-]*\.vercel\.app)$"
+    )
 
     # Security
     SECRET_KEY: str = "your-secret-key-change-in-production"

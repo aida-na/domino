@@ -30,7 +30,20 @@ export default function DominoFaqPage() {
       </section>
       <section className="space-y-2 pt-2">
         <h2 className="text-base font-bold text-[#1A1208]">do i need to install an app?</h2>
-        <p>nope. domino works over iMessage. if you can message, you can use domino.</p>
+        <p>
+          no — capture still works over iMessage if you can message. the optional{' '}
+          <strong className="font-semibold text-[#1A1208]">domino iOS app</strong> is for browsing,
+          searching, and chatting with what you&apos;ve saved, plus a Safari share extension to save
+          links without leaving the page.
+        </p>
+      </section>
+      <section className="space-y-2 pt-2">
+        <h2 className="text-base font-bold text-[#1A1208]">how does the iOS app work?</h2>
+        <p>
+          sign in with the same phone number you use for iMessage (OTP, password, or magic link). your
+          saves sync with the web dashboard. from Safari, use Share → &quot;save to domino&quot; after
+          you&apos;ve signed into the app once.
+        </p>
       </section>
       <section className="space-y-2 pt-2">
         <h2 className="text-base font-bold text-[#1A1208]">what about privacy?</h2>
@@ -41,6 +54,23 @@ export default function DominoFaqPage() {
             privacy page
           </Link>{' '}
           for details.
+        </p>
+      </section>
+      <section className="space-y-2 pt-2">
+        <h2 className="text-base font-bold text-[#1A1208]">how do i get support?</h2>
+        <p>
+          email{' '}
+          <a
+            href="mailto:aidana@dailylabs.co?subject=domino%20support"
+            className="font-semibold text-[#ED4715] underline underline-offset-2"
+          >
+            aidana@dailylabs.co
+          </a>{' '}
+          or reply to any domino iMessage. this faq page (
+          <Link href="/faq" className="font-semibold text-[#ED4715] underline underline-offset-2">
+            domino.fyi/faq
+          </Link>
+          ) is also our App Store support URL.
         </p>
       </section>
       <section className="space-y-2 pt-2">
