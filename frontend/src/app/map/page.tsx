@@ -214,11 +214,11 @@ function MapCanvas({ items, onOpen }: { items: Bookmark[]; onOpen: (item: Bookma
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <div>
             <div className="dn-wordmark" style={{ fontSize: 24, marginBottom: 6 }}>map</div>
-            <p style={{ fontSize: 12, color: 'var(--ink-3)', margin: 0, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 'var(--dn-text-sm)', color: 'var(--ink-3)', margin: 0, lineHeight: 1.5 }}>
               Folders cluster the saves they hold. Drag anything · pan the bg.
             </p>
           </div>
-          <button className="dn-chip" onClick={reset} style={{ height: 30, fontSize: 11 }}>reset</button>
+          <button className="dn-chip" onClick={reset} style={{ height: 30, fontSize: 'var(--dn-text-sm)' }}>reset</button>
         </div>
       </div>
 
@@ -280,14 +280,14 @@ function MapCanvas({ items, onOpen }: { items: Bookmark[]; onOpen: (item: Bookma
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   gap: 6,
                   fontFamily: 'var(--font-serif)',
-                  fontWeight: 600, fontSize: 14, letterSpacing: '-0.01em',
+                  fontWeight: 600, fontSize: 'var(--dn-text-base)', letterSpacing: '-0.01em',
                   cursor: 'grab', userSelect: 'none',
                   boxShadow: '0 6px 20px oklch(0 0 0 / 0.18)',
                   zIndex: 2, whiteSpace: 'nowrap',
                 }}>
                 <span>{cat}</span>
                 <span style={{
-                  fontFamily: 'var(--font-sans)', fontSize: 10, fontWeight: 600,
+                  fontFamily: 'var(--font-sans)', fontSize: 'var(--dn-text-xs)', fontWeight: 600,
                   background: 'oklch(1 0 0 / 0.18)', borderRadius: 9999,
                   padding: '2px 6px', letterSpacing: '0.02em',
                 }}>{count}</span>
@@ -320,7 +320,7 @@ function MapCanvas({ items, onOpen }: { items: Bookmark[]; onOpen: (item: Bookma
                 }}>
                 <div style={{
                   display: 'flex', gap: 4, alignItems: 'center',
-                  color: 'var(--ink-3)', fontSize: 9, marginBottom: 4,
+                  color: 'var(--ink-3)', fontSize: 'var(--dn-text-xs)', marginBottom: 4,
                   textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600,
                 }}>
                   <KindIcon kind={it.kind} size={9} />
@@ -328,7 +328,7 @@ function MapCanvas({ items, onOpen }: { items: Bookmark[]; onOpen: (item: Bookma
                 </div>
                 <div style={{
                   fontFamily: isNote ? 'var(--font-serif)' : 'var(--font-sans)',
-                  fontWeight: 600, fontSize: 11.5,
+                  fontWeight: 600, fontSize: 'var(--dn-text-base)',
                   color: 'var(--ink)', lineHeight: 1.3,
                   display: '-webkit-box',
                   WebkitLineClamp: 2,
@@ -351,7 +351,7 @@ function MapCanvas({ items, onOpen }: { items: Bookmark[]; onOpen: (item: Bookma
           border: '1px solid var(--hairline-soft)',
           borderRadius: 10,
           padding: '6px 10px',
-          fontSize: 10, color: 'var(--ink-3)',
+          fontSize: 'var(--dn-text-xs)', color: 'var(--ink-3)',
           display: 'flex', gap: 12, alignItems: 'center',
           pointerEvents: 'none',
         }}>
@@ -408,7 +408,7 @@ function MapCanvas({ items, onOpen }: { items: Bookmark[]; onOpen: (item: Bookma
             border: '1px solid var(--hairline-soft)',
             borderRadius: 8,
             padding: '2px 7px',
-            fontSize: 10, color: 'var(--ink-3)',
+            fontSize: 'var(--dn-text-xs)', color: 'var(--ink-3)',
             fontVariantNumeric: 'tabular-nums',
             pointerEvents: 'none',
           }}>{Math.round(scale * 100)}%</div>
@@ -441,7 +441,7 @@ export default function MapPage() {
   if (isLoading || fetching) {
     return (
       <DominoAppShell>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-3)', fontSize: 14 }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-3)', fontSize: 'var(--dn-text-base)' }}>
           loading map…
         </div>
       </DominoAppShell>
@@ -463,7 +463,7 @@ export default function MapPage() {
             <div style={{ padding: '0 18px 24px' }}>
               <div style={{
                 display: 'flex', gap: 6, alignItems: 'center',
-                color: 'var(--ink-3)', fontSize: 11, marginBottom: 10,
+                color: 'var(--ink-3)', fontSize: 'var(--dn-text-sm)', marginBottom: 10,
                 textTransform: 'uppercase', letterSpacing: '0.05em',
               }}>
                 <KindIcon kind={selected.kind} size={11} />
@@ -477,7 +477,7 @@ export default function MapPage() {
                 {selected.title || selected.domain || 'Untitled'}
               </div>
               {selected.snippet && (
-                <p style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.6, margin: '0 0 16px' }}>
+                <p style={{ fontSize: 'var(--dn-text-base)', color: 'var(--ink-2)', lineHeight: 1.6, margin: '0 0 16px' }}>
                   {selected.snippet.slice(0, 200)}
                 </p>
               )}
@@ -488,7 +488,7 @@ export default function MapPage() {
                   rel="noopener noreferrer"
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6,
-                    fontSize: 12, color: 'var(--domino-accent)',
+                    fontSize: 'var(--dn-text-sm)', color: 'var(--domino-accent)',
                     textDecoration: 'none',
                   }}
                 >

@@ -177,8 +177,74 @@ async def process_url(raw: str) -> ProcessedItem:
 
 
 async def process_note(text: str) -> ProcessedItem:
-    topic = await classify_topic(text)
-    return ProcessedItem(input_type="note", extracted_text=text, topic=topic, summary="", key_ideas=[])
+    """Full note processing (topic + optional polish). Prefer fast create + enrich_note for API."""
+    enriched = await enrich_note(text, current_topic=None, allow_topic_update=True)
+    return ProcessedItem(
+        input_type="note",
+        extracted_text=text,
+        topic=enriched["topic"],
+        summary=enriched["summary"],
+        key_ideas=enriched["key_ideas"],
+    )
+
+
+_NOTE_POLISH_PROMPT = """\
+Analyze this personal note and return JSON only (no markdown fences).
+
+Return:
+{{
+  "summary": "1-2 sentence plain summary of what the note is about",
+  "key_ideas": ["concise idea 1", "concise idea 2", "concise idea 3"]
+}}
+
+Rules:
+- summary: plain prose, 1-2 sentences max
+- key_ideas: 1 to 3 items, each a single clear sentence; empty array if the note is too short/trivial
+- No markdown inside the values
+
+Note:
+{text}"""
+
+
+async def enrich_note(
+    text: str,
+    *,
+    current_topic: str | None = None,
+    allow_topic_update: bool = True,
+) -> dict:
+    """
+    Classify topic + optional light polish for notes.
+
+    If allow_topic_update is False (user already set a folder), keep current_topic.
+    Topic is only replaced when current is missing/Inbox/General placeholder.
+    """
+    body = text.strip()
+    topic = current_topic or "Inbox"
+
+    if allow_topic_update:
+        classified = await classify_topic(body) if body else "General"
+        topic = classified
+
+    summary = ""
+    key_ideas: list[str] = []
+    if len(body) >= 120:
+        prompt = _NOTE_POLISH_PROMPT.format(text=body[:6000])
+        try:
+            raw = await generate_with_retry(DEFAULT_GEMINI_MODEL, prompt, max_output_tokens=384)
+            parsed = json.loads(strip_json_markdown(raw))
+            summary = str(parsed.get("summary", "")).strip()
+            key_ideas = [str(k).strip() for k in parsed.get("key_ideas", []) if k][:3]
+        except Exception as e:
+            logger.warning("enrich_note polish failed: %s", e)
+
+    return {"topic": topic, "summary": summary, "key_ideas": key_ideas}
+
+
+def topic_is_default(topic: str | None) -> bool:
+    """True when AI is allowed to overwrite the folder."""
+    if not topic:
+        return True
+    return topic.strip().lower() in ("inbox", "general")
 
 
 async def process_image(description: str) -> ProcessedItem:

@@ -45,6 +45,9 @@ class Settings(BaseSettings):
         r"^https://((www\.)?domino\.fyi|domino[a-z0-9\-]*\.vercel\.app)$"
     )
 
+    # Max new DominoUser rows created per UTC day (0 = unlimited). Invites count.
+    DAILY_NEW_USER_LIMIT: int = 5
+
     # Security
     SECRET_KEY: str = "your-secret-key-change-in-production"
 

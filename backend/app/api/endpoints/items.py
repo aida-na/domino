@@ -6,7 +6,7 @@ from uuid import UUID
 import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,7 +14,12 @@ from app.api.endpoints.auth import get_domino_user
 from app.db.session import get_db
 from app.models.domino import DominoItem, DominoUser
 from app.services.chat import answer_question_web
-from app.services.processor import detect_input_type, process_note, process_url
+from app.services.processor import (
+    detect_input_type,
+    enrich_note,
+    process_url,
+    topic_is_default,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -24,6 +29,7 @@ router = APIRouter()
 
 class CreateItemBody(BaseModel):
     raw_input: str
+    topic: str | None = Field(default=None, max_length=64)
 
 
 class ChatBody(BaseModel):
@@ -33,6 +39,9 @@ class ChatBody(BaseModel):
 class PatchItemBody(BaseModel):
     is_pinned: bool | None = None
     is_favorited: bool | None = None
+    raw_input: str | None = None
+    topic: str | None = Field(default=None, max_length=64)
+    enrich: bool | None = None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────
@@ -51,6 +60,25 @@ def _serialize_item(item: DominoItem) -> dict:
         "is_pinned": item.is_pinned,
         "is_favorited": item.is_favorited,
     }
+
+
+async def _apply_note_enrichment(item: DominoItem) -> None:
+    """Mutate item in-place with AI topic/summary/key_ideas. Caller commits."""
+    text = (item.extracted_text or item.raw_input or "").strip()
+    if not text:
+        return
+    allow_topic = topic_is_default(item.topic)
+    enriched = await enrich_note(
+        text,
+        current_topic=item.topic,
+        allow_topic_update=allow_topic,
+    )
+    if allow_topic:
+        item.topic = enriched["topic"]
+    if enriched["summary"]:
+        item.summary = enriched["summary"]
+    if enriched["key_ideas"]:
+        item.key_ideas = enriched["key_ideas"]
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────
@@ -79,11 +107,32 @@ async def create_item(
     db: AsyncSession = Depends(get_db),
 ):
     raw = body.raw_input.strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail="raw_input is required")
+
     input_type = detect_input_type(raw)
+    client_topic = body.topic.strip() if body.topic and body.topic.strip() else None
+
+    # Notes: fast path — no Gemini on the request. Client calls /enrich after.
+    if input_type == "note":
+        item = DominoItem(
+            user_phone=current_user.phone,
+            raw_input=raw,
+            input_type="note",
+            extracted_text=raw,
+            summary=None,
+            topic=client_topic or "Inbox",
+            key_ideas=[],
+        )
+        db.add(item)
+        await db.commit()
+        await db.refresh(item)
+        return _serialize_item(item)
 
     if input_type in ("link", "pdf"):
         result = await process_url(raw)
     else:
+        from app.services.processor import process_note
         result = await process_note(raw)
 
     item = DominoItem(
@@ -92,7 +141,7 @@ async def create_item(
         input_type=result.input_type,
         extracted_text=result.extracted_text or None,
         summary=result.summary or None,
-        topic=result.topic or None,
+        topic=client_topic or result.topic or None,
         key_ideas=result.key_ideas or None,
     )
     db.add(item)
@@ -135,10 +184,51 @@ async def patch_item(
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
+
     if body.is_pinned is not None:
         item.is_pinned = body.is_pinned
     if body.is_favorited is not None:
         item.is_favorited = body.is_favorited
+    if body.topic is not None:
+        topic = body.topic.strip()
+        item.topic = topic or "Inbox"
+    if body.raw_input is not None:
+        raw = body.raw_input.strip()
+        if not raw:
+            raise HTTPException(status_code=400, detail="raw_input cannot be empty")
+        item.raw_input = raw
+        if item.input_type == "note":
+            item.extracted_text = raw
+
+    should_enrich = bool(body.enrich) and item.input_type in ("note", "image")
+    if should_enrich:
+        await _apply_note_enrichment(item)
+
+    await db.commit()
+    await db.refresh(item)
+    return _serialize_item(item)
+
+
+@router.post("/items/{item_id}/enrich")
+async def enrich_item(
+    item_id: UUID,
+    current_user: DominoUser = Depends(get_domino_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """AI polish for notes/images: topic (if still default) + summary/key ideas."""
+    result = await db.execute(
+        select(DominoItem).where(
+            DominoItem.id == item_id,
+            DominoItem.user_phone == current_user.phone,
+        )
+    )
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    if item.input_type not in ("note", "image"):
+        raise HTTPException(status_code=400, detail="Only notes and images can be enriched")
+
+    await _apply_note_enrichment(item)
     await db.commit()
     await db.refresh(item)
     return _serialize_item(item)

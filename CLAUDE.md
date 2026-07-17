@@ -24,7 +24,7 @@ WhatsApp is the primary capture interface. The web dashboard is for retrieval an
 
 ```
 domino/
-  backend/    FastAPI Python backend (deployed to Vercel as Python serverless functions)
+  backend/    FastAPI Python backend (deployed to Google Cloud Run)
   frontend/   Next.js 16 frontend (deployed to Vercel)
 ```
 
@@ -219,26 +219,32 @@ Tables (all prefixed `domino_`): `users`, `items`, `otps`, `sessions`, `messages
 
 | Service | Platform | URL |
 |---|---|---|
-| Backend | Vercel (Python serverless) | `https://domino-back-end.vercel.app` |
+| Backend | Google Cloud Run | `https://domino-414681726671.us-central1.run.app` |
 | Frontend | Vercel (Next.js) | `https://domino.fyi` |
-| Database | Supabase PostgreSQL | — |
+| Database | Cloud SQL (PostgreSQL) | — |
 | Media storage | Google Cloud Storage | — |
 
 ### Environment Variables
 
 **Frontend (Vercel env vars):**
 ```
-NEXT_PUBLIC_API_URL = https://domino-back-end.vercel.app
+NEXT_PUBLIC_API_URL = https://domino-414681726671.us-central1.run.app
+```
+
+**GitHub Actions (weekly digest):**
+```
+DOMINO_API_URL = https://domino-414681726671.us-central1.run.app
+DOMINO_INTERNAL_SECRET = <same value as backend env>
 ```
 
 **Backend `.env` keys** (see `backend/.env.example` for full list):
-- `DATABASE_URL` — Supabase PostgreSQL connection string
+- `DATABASE_URL` — Cloud SQL / Postgres connection string
 - `GEMINI_API_KEY` — Google Gemini API key
-- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER`
+- `BLOOIO_API_KEY`, `BLOOIO_PHONE_NUMBER`, `BLOOIO_WEBHOOK_SECRET` — iMessage / SMS
 - `RESEND_API_KEY` — for digest emails
-- `GCS_BUCKET_NAME`, `GOOGLE_APPLICATION_CREDENTIALS` — for image storage
+- `GCS_BUCKET_NAME` — for image storage (Cloud Run uses attached service account)
 - `DOMINO_INTERNAL_SECRET` — protects `/digest/trigger` endpoint
 
 ### CI/CD
-- GitHub Actions: push to `staging` branch triggers backend + frontend deploy
+- GitHub Actions: push to `staging` branch triggers backend (Cloud Run) + frontend deploy
 - Weekly digest: `domino-weekly-digest.yml` calls `POST /api/v1/digest/trigger` with `X-Internal-Secret` header

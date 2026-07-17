@@ -21,8 +21,9 @@ from app.services.gemini_client import DEFAULT_GEMINI_MODEL
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-_LOGIN_KEYWORDS = {"login", "link", "dashboard", "hi", "hello", "start", "help"}
+_LOGIN_KEYWORDS = {"login", "link", "dashboard", "hi", "hello", "help"}
 _STOP_KEYWORDS = {"stop", "unsubscribe", "opt out", "optout", "quit"}
+_START_KEYWORDS = {"start"}
 _LIST_KEYWORDS = {"list", "show all", "my items", "my stuff", "what did i save"}
 
 _DELETE_RE = re.compile(r"^(delete|remove)\s+(last|the last|that)\b", re.IGNORECASE)
@@ -65,10 +66,24 @@ async def _load_recent_messages(db: AsyncSession, phone: str, limit: int = 10) -
 
 async def _handle_new_user(phone: str, body: str, db: AsyncSession) -> None:
     from app.api.endpoints.auth import (
-        _send_message, build_magic_link, create_session_for_phone,
+        SIGNUP_FULL_MESSAGE,
+        SignupFullError,
+        _send_message,
+        build_magic_link,
+        create_session_for_phone,
     )
+    from app.core.config import settings
 
-    session_token, _ = await create_session_for_phone(phone, db)
+    try:
+        session_token, _ = await create_session_for_phone(phone, db)
+    except SignupFullError:
+        base = (settings.FRONTEND_URL or "https://www.domino.fyi").rstrip("/")
+        reply = f"{SIGNUP_FULL_MESSAGE}\n\njoin the waitlist: {base}"
+        _send_message(phone, reply)
+        await _log_message(db, phone, "outbound", reply)
+        await db.commit()
+        return
+
     link = build_magic_link(session_token)
     welcome = f"welcome to domino 🁣\n\nyour second brain is ready. tap to open your dashboard:\n{link}"
     _send_message(phone, welcome)
@@ -101,24 +116,42 @@ async def _handle_login(phone: str, db: AsyncSession) -> None:
 
 async def _save_item(phone: str, raw: str, db: AsyncSession) -> DominoItem | None:
     """Detect type, process, and persist a DominoItem. Returns the saved item."""
+    from app.api.endpoints.items import _apply_note_enrichment
+    from app.services.processor import detect_input_type, process_url
+
     input_type = detect_input_type(raw)
 
     if input_type in ("link", "pdf"):
         result = await process_url(raw)
-    else:
-        result = await process_note(raw)
+        item = DominoItem(
+            user_phone=phone,
+            raw_input=raw,
+            input_type=result.input_type,
+            extracted_text=result.extracted_text or None,
+            summary=result.summary or None,
+            topic=result.topic or None,
+            key_ideas=result.key_ideas or None,
+        )
+        db.add(item)
+        await db.flush()
+        return item
 
+    # Notes: save fast, then enrich in-place so iMessage notes get polish too.
     item = DominoItem(
         user_phone=phone,
         raw_input=raw,
-        input_type=result.input_type,
-        extracted_text=result.extracted_text or None,
-        summary=result.summary or None,
-        topic=result.topic or None,
-        key_ideas=result.key_ideas or None,
+        input_type="note",
+        extracted_text=raw,
+        summary=None,
+        topic="Inbox",
+        key_ideas=[],
     )
     db.add(item)
     await db.flush()
+    try:
+        await _apply_note_enrichment(item)
+    except Exception as e:
+        logger.warning("note enrich after iMessage save failed: %s", e)
     return item
 
 
@@ -154,7 +187,7 @@ async def _handle_email_collection(phone: str, body: str, user: DominoUser, db: 
         await db.commit()
         # Send the pending digest now that we have an email
         try:
-            await send_weekly_digests(force=True)
+            await send_weekly_digests(force=True, phone=phone)
             reply = f"got it — sending your digest to {text.lower()} now 📬"
         except Exception as e:
             logger.warning("Failed to send digest after email collection for %s: %s", phone, e)
@@ -486,14 +519,22 @@ async def _handle_message(
 
             if user.email_pending:
                 await _handle_email_collection(phone, body, user, db)
-            elif lower in _LOGIN_KEYWORDS:
-                await _handle_login(phone, db)
             elif lower in _STOP_KEYWORDS:
                 from app.api.endpoints.auth import _send_message
+                user.digest_opted_out = True
                 reply = "you've been unsubscribed from domino digests. text 'start' anytime to come back."
                 _send_message(phone, reply)
                 await _log_message(db, phone, "outbound", reply)
                 await db.commit()
+            elif lower in _START_KEYWORDS:
+                from app.api.endpoints.auth import _send_message
+                user.digest_opted_out = False
+                reply = "welcome back — weekly digests are on again."
+                _send_message(phone, reply)
+                await _log_message(db, phone, "outbound", reply)
+                await db.commit()
+            elif lower in _LOGIN_KEYWORDS:
+                await _handle_login(phone, db)
             elif _DELETE_RE.match(text):
                 await _handle_command_delete(phone, body, db, recent)
             elif lower in _LIST_KEYWORDS:
@@ -867,7 +908,9 @@ async def debug_digest(
             "phone": user.phone[-4:].rjust(len(user.phone), "*"),  # mask all but last 4
             "email": user.email or "(not set)",
             "email_pending": user.email_pending,
+            "digest_opted_out": bool(user.digest_opted_out),
             "timezone": user.timezone,
+            "digest_time": user.digest_time,
             "unsent_items_last_7d": unsent.scalar(),
             "total_sent_items": sent.scalar(),
         })

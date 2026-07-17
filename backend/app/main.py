@@ -35,6 +35,9 @@ async def _apply_startup_schema() -> None:
                         password_hash VARCHAR,
                         email VARCHAR,
                         email_pending BOOLEAN NOT NULL DEFAULT false,
+                        digest_opted_out BOOLEAN NOT NULL DEFAULT false,
+                        invite_code VARCHAR,
+                        referred_by VARCHAR,
                         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
                     )
                 """))
@@ -124,8 +127,22 @@ async def _apply_startup_schema() -> None:
                     CREATE TABLE IF NOT EXISTS domino_waitlist (
                         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                         email VARCHAR NOT NULL UNIQUE,
+                        referred_by VARCHAR,
                         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
                     )
+                """))
+                # Additive columns for existing DBs (CREATE TABLE IF NOT EXISTS won't alter)
+                for stmt in (
+                    "ALTER TABLE domino_users ADD COLUMN IF NOT EXISTS invite_code VARCHAR",
+                    "ALTER TABLE domino_users ADD COLUMN IF NOT EXISTS referred_by VARCHAR",
+                    "ALTER TABLE domino_users ADD COLUMN IF NOT EXISTS digest_opted_out BOOLEAN NOT NULL DEFAULT false",
+                    "ALTER TABLE domino_waitlist ADD COLUMN IF NOT EXISTS referred_by VARCHAR",
+                ):
+                    await conn.execute(text(stmt))
+                await conn.execute(text("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS ix_domino_users_invite_code
+                    ON domino_users (invite_code)
+                    WHERE invite_code IS NOT NULL
                 """))
         logger.info("Startup schema applied successfully")
     except Exception:

@@ -2,9 +2,20 @@ const BASE = '/api/v1';
 
 export interface DominoMeResponse {
   phone: string;
+  email: string | null;
   timezone: string;
   digest_time: string;
+  digest_opted_out?: boolean;
   has_password?: boolean;
+  invite_code?: string | null;
+  invite_url?: string | null;
+}
+
+export interface DominoMeUpdate {
+  email?: string | null;
+  timezone?: string;
+  digest_time?: string;
+  digest_opted_out?: boolean;
 }
 
 export interface DominoAuthTokens {
@@ -44,24 +55,45 @@ function authHeaders(token: string): HeadersInit {
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error((body as { detail?: string }).detail ?? `Request failed: ${res.status}`);
+    throwApiError(body, res.status);
   }
   return res.json() as Promise<T>;
 }
 
-function parseErrorDetail(body: unknown): string {
-  const d = body as { detail?: unknown };
-  if (typeof d.detail === 'string') return d.detail;
-  if (Array.isArray(d.detail)) {
-    return d.detail
-      .map((e: unknown) =>
-        typeof e === 'object' && e !== null && 'msg' in e
-          ? String((e as { msg: string }).msg)
-          : String(e),
-      )
-      .join(', ');
+export class DominoApiError extends Error {
+  code?: string;
+  constructor(message: string, code?: string) {
+    super(message);
+    this.name = 'DominoApiError';
+    this.code = code;
   }
-  return 'Request failed';
+}
+
+function parseErrorDetail(body: unknown): { message: string; code?: string } {
+  const d = body as { detail?: unknown };
+  if (typeof d.detail === 'string') return { message: d.detail };
+  if (d.detail && typeof d.detail === 'object' && !Array.isArray(d.detail)) {
+    const obj = d.detail as { message?: string; code?: string; detail?: string };
+    const message = obj.message || obj.detail || 'Request failed';
+    return { message, code: obj.code };
+  }
+  if (Array.isArray(d.detail)) {
+    return {
+      message: d.detail
+        .map((e: unknown) =>
+          typeof e === 'object' && e !== null && 'msg' in e
+            ? String((e as { msg: string }).msg)
+            : String(e),
+        )
+        .join(', '),
+    };
+  }
+  return { message: 'Request failed' };
+}
+
+function throwApiError(body: unknown, status: number): never {
+  const { message, code } = parseErrorDetail(body);
+  throw new DominoApiError(message || `Request failed: ${status}`, code);
 }
 
 export const dominoApi = {
@@ -73,20 +105,20 @@ export const dominoApi = {
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(parseErrorDetail(body));
+      throwApiError(body, res.status);
     }
     return res.json() as Promise<{ ok: boolean }>;
   },
 
-  async verifyOtp(phone: string, code: string): Promise<DominoAuthTokens> {
+  async verifyOtp(phone: string, code: string, ref?: string | null): Promise<DominoAuthTokens> {
     const res = await fetch(`${BASE}/auth/otp/verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, code }),
+      body: JSON.stringify({ phone, code, ...(ref ? { ref } : {}) }),
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(parseErrorDetail(body));
+      throwApiError(body, res.status);
     }
     return res.json() as Promise<DominoAuthTokens>;
   },
@@ -99,7 +131,7 @@ export const dominoApi = {
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(parseErrorDetail(body));
+      throwApiError(body, res.status);
     }
     return res.json() as Promise<DominoAuthTokens>;
   },
@@ -112,26 +144,35 @@ export const dominoApi = {
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(parseErrorDetail(body));
+      throwApiError(body, res.status);
     }
     return res.json() as Promise<{ ok: boolean }>;
   },
 
-  async requestMagicLink(phone: string): Promise<{ ok: boolean }> {
-    const res = await fetch(`${BASE}/auth/magic-link`, {
+  async joinWaitlist(email: string, ref?: string | null): Promise<{ ok: boolean; already_registered: boolean }> {
+    const res = await fetch(`${BASE}/waitlist`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone }),
+      body: JSON.stringify({ email, ...(ref ? { ref } : {}) }),
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(parseErrorDetail(body));
+      throwApiError(body, res.status);
     }
-    return res.json() as Promise<{ ok: boolean }>;
+    return res.json() as Promise<{ ok: boolean; already_registered: boolean }>;
   },
 
   async getMe(token: string): Promise<DominoMeResponse> {
     const res = await fetch(`${BASE}/auth/me`, { headers: authHeaders(token) });
+    return handleResponse(res);
+  },
+
+  async updateMe(token: string, patch: DominoMeUpdate): Promise<DominoMeResponse> {
+    const res = await fetch(`${BASE}/auth/me`, {
+      method: 'PATCH',
+      headers: authHeaders(token),
+      body: JSON.stringify(patch),
+    });
     return handleResponse(res);
   },
 

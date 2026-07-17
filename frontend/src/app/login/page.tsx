@@ -1,14 +1,16 @@
 'use client';
 
 import { type FormEvent, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { AnimatePresence } from 'framer-motion';
 import { useDominoAuth } from '@/features/domino/domino-auth-context';
-import { dominoApi } from '@/features/domino/domino-api';
+import { DominoLogo } from '@/features/domino/domino-logo';
+import { DominoBrandHero } from '@/features/domino/domino-brand-hero';
+import { DominoApiError, dominoApi } from '@/features/domino/domino-api';
+import { WaitlistModal } from '@/components/WaitlistModal';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 
-type SignInMode = 'otp' | 'password' | 'magic';
+type SignInMode = 'otp' | 'password';
 type OtpStep = 'phone' | 'code' | 'setPassword';
 
 function phoneHasMinDigits(raw: string, min = 10): boolean {
@@ -30,13 +32,21 @@ export default function DominoLoginPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [resending, setResending] = useState(false);
-  const [magicSent, setMagicSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendNotice, setResendNotice] = useState<string | null>(null);
+  const [showWaitlist, setShowWaitlist] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
+    const ref = params.get('ref');
+    if (ref) {
+      try {
+        localStorage.setItem('domino_invite_ref', ref.trim().toLowerCase());
+      } catch {
+        /* ignore */
+      }
+    }
     if (token) {
       router.replace(`/dashboard?token=${encodeURIComponent(token)}`);
     }
@@ -52,8 +62,16 @@ export default function DominoLoginPage() {
       setOtpStep('phone');
       setCode('');
     }
-    if (mode !== 'magic') setMagicSent(false);
   }, [mode]);
+
+  function handleSignupFull(err: unknown) {
+    if (err instanceof DominoApiError && err.code === 'signup_full') {
+      setError(err.message);
+      setShowWaitlist(true);
+      return true;
+    }
+    return false;
+  }
 
   async function handleOtpRequest(e: FormEvent) {
     e.preventDefault();
@@ -77,15 +95,29 @@ export default function DominoLoginPage() {
     setError(null);
     setResendNotice(null);
     try {
-      const data = await dominoApi.verifyOtp(phone.trim(), code.trim());
+      const ref = (() => {
+        try {
+          return localStorage.getItem('domino_invite_ref');
+        } catch {
+          return null;
+        }
+      })();
+      const data = await dominoApi.verifyOtp(phone.trim(), code.trim(), ref);
       await loginWithToken(data.access_token);
+      try {
+        localStorage.removeItem('domino_invite_ref');
+      } catch {
+        /* ignore */
+      }
       if (data.has_password) {
         router.replace('/dashboard');
         return;
       }
       setOtpStep('setPassword');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid code.');
+      if (!handleSignupFull(err)) {
+        setError(err instanceof Error ? err.message : 'Invalid code.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -156,21 +188,6 @@ export default function DominoLoginPage() {
     }
   }
 
-  async function handleMagicLink(e: FormEvent) {
-    e.preventDefault();
-    if (!phoneHasMinDigits(phone) || submitting) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      await dominoApi.requestMagicLink(phone.trim());
-      setMagicSent(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   if (isLoading) {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-background bg-check-grid">
@@ -179,42 +196,26 @@ export default function DominoLoginPage() {
     );
   }
 
-  const modeTabs = (
-    <div className="mb-8 flex gap-1 rounded-xl border border-border bg-muted/40 p-1">
-      {(['otp', 'password', 'magic'] as const).map((m) => (
-        <button
-          key={m}
-          type="button"
-          onClick={() => setMode(m)}
-          className={cn(
-            'min-h-[44px] flex-1 touch-manipulation rounded-lg px-2 text-center text-xs font-medium transition-colors sm:text-sm',
-            mode === m ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-          )}
-        >
-          {m === 'otp' ? 'iMessage code' : m === 'password' ? 'Password' : 'Magic link'}
-        </button>
-      ))}
-    </div>
-  );
+  const inputClass =
+    'min-h-[48px] w-full rounded-xl border border-border bg-card px-4 text-base text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50';
 
   return (
     <main className="min-h-dvh bg-background bg-check-grid font-figtree lowercase text-foreground">
       <div className="mx-auto max-w-[480px] px-4 py-8 pb-24 md:px-6">
-        <div className="mb-10 flex items-center justify-between">
-          <Link href="/" className="font-compagnon text-xl font-bold tracking-wider text-foreground">
-            domino<span className="text-primary">.</span>
-          </Link>
+        <div className="mb-8 flex items-center justify-between">
+          <DominoLogo href="/" size="md" />
         </div>
 
+        <DominoBrandHero className="mb-6" />
+
         <h1 className="mb-3 text-[clamp(1.375rem,5vw,1.75rem)] font-black tracking-[-0.03em] text-foreground">
-          sign in on the web
+          {mode === 'password' ? 'sign in with password' : 'sign in'}
         </h1>
         <p className="mb-6 max-w-[420px] text-sm leading-relaxed text-muted-foreground">
-          use a one-time code over iMessage, your saved password, or a magic link—no token in the URL needed
-          for code or password sign-in.
+          {mode === 'password'
+            ? 'use the password you set after your first iMessage code sign-in.'
+            : 'we’ll iMessage you a one-time code. new seats are limited each day.'}
         </p>
-
-        {modeTabs}
 
         {mode === 'otp' && otpStep === 'phone' && (
           <form onSubmit={handleOtpRequest} className="mb-8 space-y-4">
@@ -230,12 +231,22 @@ export default function DominoLoginPage() {
               placeholder="(650) 555-0100"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="min-h-[48px] w-full rounded-xl border border-border bg-card px-4 text-base text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              className={inputClass}
             />
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
             <Button type="submit" className="min-h-[48px] w-full touch-manipulation" disabled={submitting || !phoneHasMinDigits(phone)}>
               {submitting ? 'sending…' : 'send code'}
             </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              already set a password?{' '}
+              <button
+                type="button"
+                className="font-semibold text-primary underline underline-offset-2"
+                onClick={() => setMode('password')}
+              >
+                use password
+              </button>
+            </p>
           </form>
         )}
 
@@ -261,7 +272,7 @@ export default function DominoLoginPage() {
                 setResendNotice(null);
                 setCode(e.target.value.replace(/\D/g, '').slice(0, 6));
               }}
-              className="min-h-[48px] w-full rounded-xl border border-border bg-card px-4 text-center font-mono text-xl tracking-[0.3em] text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              className={`${inputClass} text-center font-mono text-xl tracking-[0.3em]`}
             />
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
             {resendNotice ? <p className="text-sm text-muted-foreground">{resendNotice}</p> : null}
@@ -311,7 +322,7 @@ export default function DominoLoginPage() {
               autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="min-h-[48px] w-full rounded-xl border border-border bg-card px-4 text-base text-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              className={inputClass}
             />
             <label htmlFor="domino-np2" className="block text-xs font-bold tracking-wide text-muted-foreground">
               confirm password
@@ -322,7 +333,7 @@ export default function DominoLoginPage() {
               autoComplete="new-password"
               value={newPasswordConfirm}
               onChange={(e) => setNewPasswordConfirm(e.target.value)}
-              className="min-h-[48px] w-full rounded-xl border border-border bg-card px-4 text-base text-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              className={inputClass}
             />
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
             <div className="flex flex-col gap-2 sm:flex-row">
@@ -349,7 +360,7 @@ export default function DominoLoginPage() {
               placeholder="(650) 555-0100"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="min-h-[48px] w-full rounded-xl border border-border bg-card px-4 text-base text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              className={inputClass}
             />
             <label htmlFor="domino-pw" className="block text-xs font-bold tracking-wide text-muted-foreground">
               password
@@ -360,59 +371,52 @@ export default function DominoLoginPage() {
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="min-h-[48px] w-full rounded-xl border border-border bg-card px-4 text-base text-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              className={inputClass}
             />
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
             <Button type="submit" className="min-h-[48px] w-full touch-manipulation" disabled={submitting || !phoneHasMinDigits(phone) || !password}>
               {submitting ? 'signing in…' : 'sign in'}
             </Button>
-            <p className="text-xs text-muted-foreground">
-              first time? use <button type="button" className="font-semibold text-primary underline" onClick={() => setMode('otp')}>iMessage code</button> to sign in, then you can add a password.
+            <p className="text-center text-xs text-muted-foreground">
+              <button
+                type="button"
+                className="font-semibold text-primary underline underline-offset-2"
+                onClick={() => setMode('otp')}
+              >
+                use iMessage code instead
+              </button>
             </p>
-          </form>
-        )}
-
-        {mode === 'magic' && (
-          <form onSubmit={handleMagicLink} className="mb-8 space-y-4">
-            <p className="text-sm text-muted-foreground">
-              if this number is already on file, we&apos;ll iMessage you a link to open the dashboard.
-            </p>
-            <label htmlFor="domino-phone-magic" className="block text-xs font-bold tracking-wide text-muted-foreground">
-              phone number
-            </label>
-            <input
-              id="domino-phone-magic"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder="(650) 555-0100"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="min-h-[48px] w-full rounded-xl border border-border bg-card px-4 text-base text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-            />
-            {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            <Button type="submit" className="min-h-[48px] w-full touch-manipulation" disabled={submitting || !phoneHasMinDigits(phone)}>
-              {submitting ? 'sending…' : 'iMessage me a link'}
-            </Button>
-            {magicSent ? (
-              <p className="text-sm text-muted-foreground" role="status">
-                if this number is registered, check iMessage for a sign-in link.
-              </p>
-            ) : null}
           </form>
         )}
 
         <p className="mt-8 max-w-[420px] text-xs leading-relaxed text-muted-foreground">
-          if you need help,{' '}
+          full today?{' '}
+          <button
+            type="button"
+            className="font-semibold text-primary underline underline-offset-2"
+            onClick={() => setShowWaitlist(true)}
+          >
+            join the waitlist
+          </button>
+          {' · '}
           <a
             href="mailto:aidana@dailylabs.co?subject=domino%20login"
             className="font-semibold text-primary underline underline-offset-2"
           >
             email us
           </a>
-          .
         </p>
       </div>
+
+      <AnimatePresence>
+        {showWaitlist && (
+          <WaitlistModal
+            key="waitlist"
+            variant="full"
+            onClose={() => setShowWaitlist(false)}
+          />
+        )}
+      </AnimatePresence>
     </main>
   );
 }

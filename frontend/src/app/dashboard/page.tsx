@@ -8,6 +8,7 @@ import { DominoAppShell } from '@/features/domino/domino-app-shell';
 import { useDominoAuth } from '@/features/domino/domino-auth-context';
 import { dominoApi, type DominoItem } from '@/features/domino/domino-api';
 import { toBookmark, cardColor, faviconLetter, urlToDisplayTitle, timeAgo, type Bookmark } from '@/features/domino/domino-utils';
+import { DominoLogo } from '@/features/domino/domino-logo';
 import { IcSearch, IcSort, IcX, IcStar, IcPin, IcShare, IcExt, IcPlus, IcClipboard, KindIcon } from '@/features/domino/domino-icons';
 
 function useMagicLink(loginWithToken: (t: string) => Promise<void>) {
@@ -37,11 +38,11 @@ function BookmarkCard({ item, onStar, onPin, onDelete, onOpen }: {
     <div className={`dn-card${pop ? ' dn-pop' : ''}`} style={{ background: cardColor(item.color) }} onClick={() => onOpen(item)}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 6, background: 'oklch(1 0 0 / 0.7)', color: 'var(--ink-2)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ fontSize: 'var(--dn-text-sm)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 6, background: 'oklch(1 0 0 / 0.7)', color: 'var(--ink-2)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <KindIcon kind={item.kind} /> {item.kind}
           </span>
           {item.categories[0] && (
-            <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 6, background: 'oklch(0 0 0 / 0.05)', color: 'var(--ink-2)' }}>{item.categories[0]}</span>
+            <span style={{ fontSize: 'var(--dn-text-sm)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 6, background: 'oklch(0 0 0 / 0.05)', color: 'var(--ink-2)' }}>{item.categories[0]}</span>
           )}
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
@@ -57,7 +58,7 @@ function BookmarkCard({ item, onStar, onPin, onDelete, onOpen }: {
       {item.kind === 'note' || item.kind === 'pdf' ? (
         <>
           <h3 style={{ fontFamily: 'var(--font-serif)', fontWeight: 600, fontSize: 18, lineHeight: 1.25, letterSpacing: '-0.01em', color: 'var(--ink)', margin: 0, wordBreak: 'break-word' }}>{displayTitle}</h3>
-          {item.snippet && <p style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--ink-2)', margin: 0, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.snippet}</p>}
+          {item.snippet && <p style={{ fontSize: 'var(--dn-text-base)', lineHeight: 1.5, color: 'var(--ink-2)', margin: 0, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.snippet}</p>}
         </>
       ) : titleIsUrl ? (
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -65,17 +66,17 @@ function BookmarkCard({ item, onStar, onPin, onDelete, onOpen }: {
             {faviconLetter(item.domain)}
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontFamily: 'var(--font-serif)', fontWeight: 600, fontSize: 15, color: 'var(--ink)', lineHeight: 1.25, letterSpacing: '-0.005em', marginBottom: 4 }}>{urlToDisplayTitle(item.url, item.domain)}</div>
-            <div style={{ fontFamily: 'var(--font-jb-mono)', fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.4, wordBreak: 'break-all', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.url?.replace(/^https?:\/\//, '')}</div>
+            <div style={{ fontFamily: 'var(--font-serif)', fontWeight: 600, fontSize: 'var(--dn-text-base)', color: 'var(--ink)', lineHeight: 1.25, letterSpacing: '-0.005em', marginBottom: 4 }}>{urlToDisplayTitle(item.url, item.domain)}</div>
+            <div style={{ fontFamily: 'var(--font-jb-mono)', fontSize: 'var(--dn-text-sm)', color: 'var(--ink-3)', lineHeight: 1.4, wordBreak: 'break-all', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.url?.replace(/^https?:\/\//, '')}</div>
           </div>
         </div>
       ) : (
         <>
           <h3 style={{ fontFamily: 'var(--font-serif)', fontWeight: 600, fontSize: 18, lineHeight: 1.25, letterSpacing: '-0.01em', color: 'var(--ink)', margin: 0 }}>{displayTitle}</h3>
-          {item.snippet && <p style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--ink-2)', margin: 0, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.snippet}</p>}
+          {item.snippet && <p style={{ fontSize: 'var(--dn-text-base)', lineHeight: 1.5, color: 'var(--ink-2)', margin: 0, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.snippet}</p>}
           {item.domain && (
-            <a style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ink-3)', textDecoration: 'none' }} href={item.url!} onClick={(e) => e.stopPropagation()} target="_blank" rel="noreferrer">
-              <span style={{ width: 16, height: 16, borderRadius: 4, background: 'var(--paper)', border: '1px solid oklch(0 0 0 / 0.06)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: 'var(--ink-2)' }}>{faviconLetter(item.domain)}</span>
+            <a style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--dn-text-sm)', color: 'var(--ink-3)', textDecoration: 'none' }} href={item.url!} onClick={(e) => e.stopPropagation()} target="_blank" rel="noreferrer">
+              <span style={{ width: 16, height: 16, borderRadius: 4, background: 'var(--paper)', border: '1px solid oklch(0 0 0 / 0.06)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--ink-2)' }}>{faviconLetter(item.domain)}</span>
               <span style={{ borderBottom: '1px dashed oklch(0 0 0 / 0.2)', paddingBottom: 1 }}>{item.domain}</span>
               <IcExt />
             </a>
@@ -84,7 +85,7 @@ function BookmarkCard({ item, onStar, onPin, onDelete, onOpen }: {
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
-        <span style={{ fontSize: 11, color: 'var(--ink-4)', fontVariantNumeric: 'tabular-nums' }}>{timeAgo(item.days)}</span>
+        <span style={{ fontSize: 'var(--dn-text-sm)', color: 'var(--ink-4)', fontVariantNumeric: 'tabular-nums' }}>{timeAgo(item.days)}</span>
         <div style={{ display: 'flex', gap: 2 }}>
           <button className="dn-icon-btn" onClick={(e) => { e.stopPropagation(); onOpen(item); }}><IcExt /></button>
           <button className="dn-icon-btn" onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}><IcX /></button>
@@ -97,6 +98,7 @@ function BookmarkCard({ item, onStar, onPin, onDelete, onOpen }: {
 function AddSheet({ token, onClose, onAdd }: { token: string; onClose: () => void; onAdd: (item: DominoItem) => void }) {
   const [input, setInput] = useState('');
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => { ref.current?.focus(); }, []);
 
@@ -109,10 +111,11 @@ function AddSheet({ token, onClose, onAdd }: { token: string; onClose: () => voi
   }
 
   async function submit() {
-    if (!input.trim() || saving) return;
+    if (!input.trim() || saving || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     try { const item = await dominoApi.createItem(token, input.trim()); onAdd(item); }
-    catch (e) { console.error(e); setSaving(false); }
+    catch (e) { console.error(e); savingRef.current = false; setSaving(false); }
   }
 
   return (
@@ -126,16 +129,16 @@ function AddSheet({ token, onClose, onAdd }: { token: string; onClose: () => voi
         </div>
         <div style={{ background: 'var(--paper)', border: '1px solid var(--hairline)', borderRadius: 14, padding: 12, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <span style={{ color: 'var(--ink-4)', paddingTop: 2 }}><IcSearch size={16} /></span>
-          <input ref={ref} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit()} placeholder="paste a link, or type a note…" style={{ flex: 1, border: 0, outline: 0, background: 'transparent', fontFamily: 'var(--font-jb-mono)', fontSize: 13, color: 'var(--ink)' }} />
-          <button className="dn-chip" style={{ height: 30, fontSize: 12 }} onClick={paste}><IcClipboard /> paste</button>
+          <input ref={ref} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit()} placeholder="paste a link, or type a note…" style={{ flex: 1, border: 0, outline: 0, background: 'transparent', fontFamily: 'var(--font-jb-mono)', fontSize: 'var(--dn-text-base)', color: 'var(--ink)' }} />
+          <button className="dn-chip" style={{ height: 30, fontSize: 'var(--dn-text-sm)' }} onClick={paste}><IcClipboard /> paste</button>
         </div>
         {isUrl && domain && (
           <div style={{ marginTop: 14, border: '1px solid var(--hairline)', borderRadius: 14, background: 'var(--paper)', padding: 12, display: 'flex', gap: 12 }}>
             <div style={{ width: 56, height: 56, borderRadius: 10, background: 'var(--card-m)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-serif)', fontSize: 22, color: 'var(--ink)', fontWeight: 700, flexShrink: 0 }}>{domain[0].toUpperCase()}</div>
-            <div><div style={{ fontFamily: 'var(--font-serif)', fontWeight: 600, fontSize: 15, marginBottom: 4, color: 'var(--ink)' }}>{domain}</div><div style={{ fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.5 }}>We&apos;ll grab the title and summary when you save.</div></div>
+            <div><div style={{ fontFamily: 'var(--font-serif)', fontWeight: 600, fontSize: 'var(--dn-text-base)', marginBottom: 4, color: 'var(--ink)' }}>{domain}</div><div style={{ fontSize: 'var(--dn-text-sm)', color: 'var(--ink-3)', lineHeight: 1.5 }}>We&apos;ll grab the title and summary when you save.</div></div>
           </div>
         )}
-        <button onClick={submit} disabled={!input.trim() || saving} style={{ width: '100%', marginTop: 20, height: 50, borderRadius: 14, background: (!input.trim() || saving) ? 'var(--bg-deep)' : 'var(--domino-accent)', color: (!input.trim() || saving) ? 'var(--ink-4)' : 'white', fontWeight: 600, fontSize: 14, transition: 'all 160ms ease', border: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
+        <button onClick={submit} disabled={!input.trim() || saving} style={{ width: '100%', marginTop: 20, height: 50, borderRadius: 14, background: (!input.trim() || saving) ? 'var(--bg-deep)' : 'var(--domino-accent)', color: (!input.trim() || saving) ? 'var(--ink-4)' : 'white', fontWeight: 600, fontSize: 'var(--dn-text-base)', transition: 'all 160ms ease', border: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
           {saving ? 'Saving…' : input.trim() ? 'Save to domino' : 'Paste or type something'}
         </button>
       </div>
@@ -152,16 +155,16 @@ function DetailSheet({ item, onClose }: { item: Bookmark; onClose: () => void })
         <div className="dn-grabber" />
         <div style={{ borderRadius: 18, padding: 18, background: cardColor(item.color), marginBottom: 16 }}>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 14 }}>
-            <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 6, background: 'oklch(1 0 0 / 0.7)', color: 'var(--ink-2)', display: 'inline-flex', alignItems: 'center', gap: 4 }}><KindIcon kind={item.kind} /> {item.kind}</span>
-            {item.categories[0] && <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 6, background: 'oklch(0 0 0 / 0.06)', color: 'var(--ink-2)' }}>{item.categories[0]}</span>}
+            <span style={{ fontSize: 'var(--dn-text-sm)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 6, background: 'oklch(1 0 0 / 0.7)', color: 'var(--ink-2)', display: 'inline-flex', alignItems: 'center', gap: 4 }}><KindIcon kind={item.kind} /> {item.kind}</span>
+            {item.categories[0] && <span style={{ fontSize: 'var(--dn-text-sm)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 6, background: 'oklch(0 0 0 / 0.06)', color: 'var(--ink-2)' }}>{item.categories[0]}</span>}
             <div style={{ flex: 1 }} />
-            <span style={{ fontSize: 11, color: 'var(--ink-4)' }}>{timeAgo(item.days)}</span>
+            <span style={{ fontSize: 'var(--dn-text-sm)', color: 'var(--ink-4)' }}>{timeAgo(item.days)}</span>
           </div>
           <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: 22, fontWeight: 700, letterSpacing: '-0.01em', margin: '0 0 10px', wordBreak: 'break-word' }}>{display}</h2>
-          {item.snippet && <p style={{ fontSize: 14, color: 'var(--ink-2)', lineHeight: 1.55, margin: '0 0 14px', whiteSpace: 'pre-line' }}>{item.snippet}</p>}
+          {item.snippet && <p style={{ fontSize: 'var(--dn-text-base)', color: 'var(--ink-2)', lineHeight: 1.55, margin: '0 0 14px', whiteSpace: 'pre-line' }}>{item.snippet}</p>}
           {item.domain && (
-            <a href={item.url!} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ink-3)', textDecoration: 'none' }}>
-              <span style={{ width: 16, height: 16, borderRadius: 4, background: 'var(--paper)', border: '1px solid oklch(0 0 0 / 0.06)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: 'var(--ink-2)' }}>{faviconLetter(item.domain)}</span>
+            <a href={item.url!} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--dn-text-sm)', color: 'var(--ink-3)', textDecoration: 'none' }}>
+              <span style={{ width: 16, height: 16, borderRadius: 4, background: 'var(--paper)', border: '1px solid oklch(0 0 0 / 0.06)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--ink-2)' }}>{faviconLetter(item.domain)}</span>
               <span style={{ borderBottom: '1px dashed oklch(0 0 0 / 0.2)', paddingBottom: 1 }}>{item.domain}</span>
               <IcExt />
             </a>
@@ -169,12 +172,12 @@ function DetailSheet({ item, onClose }: { item: Bookmark; onClose: () => void })
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginBottom: 18 }}>
           {[['Star', <IcStar key="s" size={18} filled={item.starred} />], ['Pin', <IcPin key="p" size={18} filled={item.pinned} />], ['Share', <IcShare key="sh" size={18} />], ['Open', <IcExt key="o" size={18} />]].map(([label, ic]) => (
-            <button key={label as string} onClick={() => label === 'Open' && item.url ? window.open(item.url, '_blank') : undefined} style={{ background: 'var(--paper)', border: '1px solid var(--hairline-soft)', borderRadius: 12, padding: '10px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, color: 'var(--ink-2)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <button key={label as string} onClick={() => label === 'Open' && item.url ? window.open(item.url, '_blank') : undefined} style={{ background: 'var(--paper)', border: '1px solid var(--hairline-soft)', borderRadius: 12, padding: '10px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, color: 'var(--ink-2)', fontSize: 'var(--dn-text-sm)', cursor: 'pointer', fontFamily: 'inherit' }}>
               {ic}<span>{label as string}</span>
             </button>
           ))}
         </div>
-        <button onClick={onClose} style={{ width: '100%', height: 46, borderRadius: 14, background: 'var(--bg-deep)', color: 'var(--ink-2)', fontWeight: 600, fontSize: 14, border: 0, cursor: 'pointer', fontFamily: 'inherit' }}>Close</button>
+        <button onClick={onClose} style={{ width: '100%', height: 46, borderRadius: 14, background: 'var(--bg-deep)', color: 'var(--ink-2)', fontWeight: 600, fontSize: 'var(--dn-text-base)', border: 0, cursor: 'pointer', fontFamily: 'inherit' }}>Close</button>
       </div>
     </>
   );
@@ -188,7 +191,11 @@ function SavedView() {
   const [rawItems, setRawItems] = useState<DominoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<'newest' | 'oldest' | 'starred' | 'a-z'>('newest');
+  const [sort, setSort] = useState<'newest' | 'oldest' | 'starred' | 'a-z'>(() => {
+    if (typeof window === 'undefined') return 'newest';
+    const s = new URLSearchParams(window.location.search).get('sort');
+    return s === 'oldest' || s === 'starred' || s === 'a-z' ? s : 'newest';
+  });
   const [filter, setFilter] = useState<'all' | 'note' | 'link' | 'pdf' | 'image'>('all');
   const [sortOpen, setSortOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -200,6 +207,15 @@ function SavedView() {
   }, [token]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (sort === 'newest') params.delete('sort');
+    else params.set('sort', sort);
+    const qs = params.toString();
+    const next = qs ? `/dashboard?${qs}` : '/dashboard';
+    window.history.replaceState({}, '', next);
+  }, [sort]);
 
   const bookmarks = useMemo(() => rawItems.map(toBookmark), [rawItems]);
 
@@ -251,8 +267,8 @@ function SavedView() {
       <div style={{ padding: '14px 18px 0', flexShrink: 0 }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 14 }}>
-          <div className="dn-wordmark" style={{ fontSize: 32 }}>domino</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ink-3)', fontSize: 12 }}>
+          <DominoLogo size="xl" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ink-3)', fontSize: 'var(--dn-text-sm)' }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--domino-accent)', boxShadow: '0 0 0 3px oklch(0.66 0.19 35 / 0.18)' }} />
             <span style={{ fontVariantNumeric: 'tabular-nums' }}>{bookmarks.length} saved{todayCount > 0 ? ` · ${todayCount} today` : ''}</span>
           </div>
@@ -266,7 +282,7 @@ function SavedView() {
             {query && <button className="dn-icon-btn" onClick={() => setQuery('')}><IcX /></button>}
           </div>
           <div style={{ position: 'relative' }}>
-            <button onClick={() => setSortOpen(o => !o)} style={{ height: 44, padding: '0 14px', border: '1px solid var(--hairline)', borderRadius: 9999, background: 'var(--paper)', fontSize: 13.5, color: 'var(--ink-2)', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <button onClick={() => setSortOpen(o => !o)} style={{ height: 44, padding: '0 14px', border: '1px solid var(--hairline)', borderRadius: 9999, background: 'var(--paper)', fontSize: 'var(--dn-text-base)', color: 'var(--ink-2)', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontFamily: 'inherit' }}>
               <IcSort /> {sortLabels[sort]}
             </button>
             {sortOpen && (
@@ -274,7 +290,7 @@ function SavedView() {
                 <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setSortOpen(false)} />
                 <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 11, background: 'var(--paper)', border: '1px solid var(--hairline)', borderRadius: 14, minWidth: 140, padding: 6, boxShadow: '0 10px 30px oklch(0 0 0 / 0.1)' }}>
                   {(['newest', 'oldest', 'starred', 'a-z'] as const).map(s => (
-                    <button key={s} onClick={() => { setSort(s); setSortOpen(false); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px', borderRadius: 8, fontSize: 13, background: sort === s ? 'var(--bg-deep)' : 'transparent', color: sort === s ? 'var(--ink)' : 'var(--ink-2)', fontWeight: sort === s ? 600 : 400, cursor: 'pointer', fontFamily: 'inherit', border: 0 }}>
+                    <button key={s} onClick={() => { setSort(s); setSortOpen(false); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px', borderRadius: 8, fontSize: 'var(--dn-text-base)', background: sort === s ? 'var(--bg-deep)' : 'transparent', color: sort === s ? 'var(--ink)' : 'var(--ink-2)', fontWeight: sort === s ? 600 : 400, cursor: 'pointer', fontFamily: 'inherit', border: 0 }}>
                       {{ newest: 'newest first', oldest: 'oldest first', starred: 'starred first', 'a-z': 'A → Z' }[s]}
                     </button>
                   ))}
@@ -286,7 +302,7 @@ function SavedView() {
 
         {/* Filter chips */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: 17, fontWeight: 600, margin: 0, color: 'var(--ink-2)', letterSpacing: '-0.01em' }}>My folders</h2>
+          <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--dn-text-md)', fontWeight: 600, margin: 0, color: 'var(--ink-2)', letterSpacing: '-0.01em' }}>My folders</h2>
         </div>
         <div className="dn-hscroll" style={{ paddingBottom: 10, marginRight: -18 }}>
           {(['all', 'note', 'link', 'pdf', 'image'] as const).map(k => (
@@ -302,12 +318,12 @@ function SavedView() {
       {/* Cards */}
       <div style={{ flex: 1, overflow: 'auto', padding: '14px 18px 100px' }}>
         {loading ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200, color: 'var(--ink-4)', fontFamily: 'var(--font-serif)', fontSize: 16 }}>loading…</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200, color: 'var(--ink-4)', fontFamily: 'var(--font-serif)', fontSize: 'var(--dn-text-base)' }}>loading…</div>
         ) : filtered.length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 24px', textAlign: 'center', color: 'var(--ink-3)' }}>
             <div style={{ width: 64, height: 64, borderRadius: 18, background: 'var(--bg-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-3)', border: '1px dashed var(--hairline)' }}><IcSearch size={24} /></div>
             <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 22, margin: '12px 0 6px', color: 'var(--ink)' }}>Nothing here yet</h3>
-            <p style={{ fontSize: 13, margin: 0, maxWidth: 240, lineHeight: 1.5 }}>{query ? 'Try a different search.' : 'Save your first link with the + button.'}</p>
+            <p style={{ fontSize: 'var(--dn-text-base)', margin: 0, maxWidth: 240, lineHeight: 1.5 }}>{query ? 'Try a different search.' : 'Save your first link with the + button.'}</p>
           </div>
         ) : (
           <div className="dn-masonry">

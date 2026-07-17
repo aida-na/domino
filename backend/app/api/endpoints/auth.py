@@ -9,7 +9,7 @@ from uuid import UUID
 import bcrypt
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -22,6 +22,66 @@ router = APIRouter(prefix="/auth")
 
 OTP_TTL_MINUTES = 10
 MIN_PASSWORD_LEN = 8
+INVITE_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"
+
+SIGNUP_FULL_MESSAGE = (
+    "we're only letting in a few people a day — join the waitlist or try again tomorrow."
+)
+
+
+class SignupFullError(Exception):
+    """Daily new-user cap reached; do not create DominoUser."""
+
+
+def signup_full_http_detail() -> dict:
+    return {"code": "signup_full", "message": SIGNUP_FULL_MESSAGE}
+
+
+async def count_new_users_today(db: AsyncSession) -> int:
+    """Count DominoUser rows created since 00:00 UTC today."""
+    start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    result = await db.execute(
+        select(func.count()).select_from(DominoUser).where(DominoUser.created_at >= start)
+    )
+    return int(result.scalar_one() or 0)
+
+
+async def assert_can_create_user(db: AsyncSession) -> None:
+    limit = settings.DAILY_NEW_USER_LIMIT
+    if limit <= 0:
+        return
+    if await count_new_users_today(db) >= limit:
+        raise SignupFullError()
+
+
+def _generate_invite_code(length: int = 8) -> str:
+    return "".join(secrets.choice(INVITE_ALPHABET) for _ in range(length))
+
+
+async def ensure_invite_code(user: DominoUser, db: AsyncSession) -> str:
+    """Assign a unique invite code if the user doesn't have one yet."""
+    if user.invite_code:
+        return user.invite_code
+    for _ in range(12):
+        code = _generate_invite_code()
+        existing = await db.execute(select(DominoUser).where(DominoUser.invite_code == code))
+        if existing.scalar_one_or_none() is None:
+            user.invite_code = code
+            await db.commit()
+            await db.refresh(user)
+            return code
+    raise HTTPException(status_code=500, detail="Could not allocate invite code")
+
+
+async def resolve_referrer_code(ref: str | None, db: AsyncSession) -> str | None:
+    if not ref:
+        return None
+    code = ref.strip().lower()
+    if not code or len(code) > 32:
+        return None
+    result = await db.execute(select(DominoUser).where(DominoUser.invite_code == code))
+    referrer = result.scalar_one_or_none()
+    return referrer.invite_code if referrer else None
 
 
 def _send_message_safe(to: str, body: str, *, context: str) -> None:
@@ -117,20 +177,32 @@ def _react_message(chat_id: str, message_id: str, emoji: str = "👍") -> None:
 _react_whatsapp = _react_message
 
 
-async def create_session_for_phone(phone: str, db: AsyncSession) -> tuple[str, bool]:
+async def create_session_for_phone(
+    phone: str,
+    db: AsyncSession,
+    *,
+    referred_by: str | None = None,
+) -> tuple[str, bool]:
     """
     Upsert DominoUser, create a new 30-day session, commit.
     Returns (session_token, whether the user already had a password set).
+
+    Raises SignupFullError when creating a brand-new user would exceed
+    DAILY_NEW_USER_LIMIT (returning users are always allowed).
     """
     user_result = await db.execute(select(DominoUser).where(DominoUser.phone == phone))
     user = user_result.scalar_one_or_none()
     has_password = False
     if not user:
-        user = DominoUser(phone=phone)
+        await assert_can_create_user(db)
+        user = DominoUser(phone=phone, referred_by=referred_by)
         db.add(user)
         await db.flush()
+        await ensure_invite_code(user, db)
     else:
         has_password = bool(user.password_hash)
+        if not user.invite_code:
+            await ensure_invite_code(user, db)
 
     session = DominoSession(
         user_phone=phone,
@@ -216,14 +288,86 @@ async def request_magic_link(
     return {"ok": True}
 
 
-@router.get("/me")
-async def get_me(current_user: DominoUser = Depends(get_domino_user)):
+def _serialize_me(user: DominoUser) -> dict:
+    base = (settings.FRONTEND_URL or "https://domino.fyi").rstrip("/")
+    code = user.invite_code
     return {
-        "phone": current_user.phone,
-        "timezone": current_user.timezone,
-        "digest_time": current_user.digest_time,
-        "has_password": bool(current_user.password_hash),
+        "phone": user.phone,
+        "email": user.email,
+        "timezone": user.timezone,
+        "digest_time": user.digest_time,
+        "digest_opted_out": bool(user.digest_opted_out),
+        "has_password": bool(user.password_hash),
+        "invite_code": code,
+        "invite_url": f"{base}/login?ref={code}" if code else None,
     }
+
+
+@router.get("/me")
+async def get_me(
+    current_user: DominoUser = Depends(get_domino_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await ensure_invite_code(current_user, db)
+    return _serialize_me(current_user)
+
+
+class UpdateMeBody(BaseModel):
+    email: str | None = Field(default=None, max_length=254)
+    timezone: str | None = Field(default=None, min_length=1, max_length=64)
+    digest_time: str | None = Field(default=None, min_length=4, max_length=5)
+    digest_opted_out: bool | None = None
+
+    @field_validator("email")
+    @classmethod
+    def valid_email(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        s = v.strip().lower()
+        if not s:
+            return None
+        if "@" not in s or "." not in s.split("@")[-1]:
+            raise ValueError("Invalid email")
+        return s
+
+    @field_validator("digest_time")
+    @classmethod
+    def valid_digest_time(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        s = v.strip()
+        parts = s.split(":")
+        if len(parts) != 2:
+            raise ValueError("digest_time must be HH:MM")
+        try:
+            h, m = int(parts[0]), int(parts[1])
+        except ValueError as e:
+            raise ValueError("digest_time must be HH:MM") from e
+        if not (0 <= h <= 23 and 0 <= m <= 59):
+            raise ValueError("digest_time must be HH:MM")
+        return f"{h:02d}:{m:02d}"
+
+
+@router.patch("/me")
+async def update_me(
+    body: UpdateMeBody,
+    current_user: DominoUser = Depends(get_domino_user),
+    db: AsyncSession = Depends(get_db),
+):
+    fields = body.model_fields_set
+    if "email" in fields:
+        current_user.email = body.email
+        current_user.email_pending = False
+    if "timezone" in fields and body.timezone is not None:
+        current_user.timezone = body.timezone.strip()
+    if "digest_time" in fields and body.digest_time is not None:
+        current_user.digest_time = body.digest_time
+    if "digest_opted_out" in fields and body.digest_opted_out is not None:
+        current_user.digest_opted_out = body.digest_opted_out
+    await db.commit()
+    await db.refresh(current_user)
+    await ensure_invite_code(current_user, db)
+    return _serialize_me(current_user)
 
 
 @router.post("/logout")
@@ -280,6 +424,7 @@ async def request_otp(
 class OtpVerifyBody(BaseModel):
     phone: str = Field(..., min_length=8, max_length=40)
     code: str = Field(..., min_length=4, max_length=8)
+    ref: str | None = Field(default=None, max_length=32)
 
     @field_validator("code")
     @classmethod
@@ -315,10 +460,24 @@ async def verify_otp(
     if not otp:
         raise HTTPException(status_code=401, detail="Invalid or expired code")
 
+    # Cap check before consuming OTP so a full day doesn't burn the code.
+    existing = await db.execute(select(DominoUser).where(DominoUser.phone == phone))
+    if existing.scalar_one_or_none() is None:
+        try:
+            await assert_can_create_user(db)
+        except SignupFullError:
+            raise HTTPException(status_code=403, detail=signup_full_http_detail()) from None
+
     otp.used = True
     await db.commit()
 
-    session_token, has_password = await create_session_for_phone(phone, db)
+    referred_by = await resolve_referrer_code(body.ref, db)
+    try:
+        session_token, has_password = await create_session_for_phone(
+            phone, db, referred_by=referred_by
+        )
+    except SignupFullError:
+        raise HTTPException(status_code=403, detail=signup_full_http_detail()) from None
 
     return {
         "access_token": session_token,

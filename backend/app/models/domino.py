@@ -20,6 +20,9 @@ class DominoUser(Base):
     password_hash = Column(String, nullable=True)
     email = Column(String, nullable=True)
     email_pending = Column(Boolean, default=False, nullable=False, server_default="false")
+    digest_opted_out = Column(Boolean, default=False, nullable=False, server_default="false")
+    invite_code = Column(String, unique=True, index=True, nullable=True)
+    referred_by = Column(String, nullable=True)  # invite_code of referring user
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
@@ -97,4 +100,5 @@ class DominoWaitlist(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String, unique=True, nullable=False)
+    referred_by = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

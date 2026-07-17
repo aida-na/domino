@@ -74,6 +74,25 @@
   --ring: #ED4715;
 }
 
+/* Basteleur — logo + tab chrome */
+@font-face {
+  font-family: "Basteleur";
+  src: url("/fonts/basteleur-master/fonts/woff2/Basteleur-Bold.woff2") format("woff2"),
+       url("/fonts/basteleur-master/fonts/otf/Basteleur-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Basteleur";
+  src: url("/fonts/basteleur-master/fonts/woff2/Basteleur-Moonlight.woff2") format("woff2"),
+       url("/fonts/basteleur-master/fonts/otf/Basteleur-Moonlight.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* DT Getai Grotesk Display Black */
 @font-face {
   font-family: "GetaiGroteskDisplay";
@@ -118,7 +137,9 @@
     background-size: 80px 80px;
   }
   .font-compagnon {
-    font-family: "GetaiGroteskDisplay", sans-serif;
+    font-family: "Basteleur", "GetaiGroteskDisplay", sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
   .font-drafting-mono {
     font-family: "DraftingMono", monospace;
@@ -151,31 +172,94 @@
   --domino-star:        oklch(0.82 0.16 85);
   --font-serif: var(--font-newsreader, Georgia, ui-serif, serif);
   --font-jb-mono: var(--font-jb-mono, ui-monospace, monospace);
+  --dn-nav-bg: oklch(0.99 0.005 90 / 0.92);
+  --dn-icon-hover: oklch(0 0 0 / 0.06);
+  --dn-backdrop: oklch(0 0 0 / 0.3);
+  --dn-grabber: oklch(0 0 0 / 0.15);
+  --dn-grid-dot: oklch(0 0 0 / 0.08);
+  --dn-search-ring: oklch(0.85 0.01 80 / 0.5);
+  --dn-card-border: oklch(0 0 0 / 0.04);
+  --dn-card-shadow: 0 1px 0 oklch(0 0 0 / 0.02), 0 1px 8px oklch(0 0 0 / 0.03);
+  --dn-card-shadow-hover: 0 2px 0 oklch(0 0 0 / 0.02), 0 10px 24px oklch(0 0 0 / 0.06);
+  --dn-text-xs: 12px;
+  --dn-text-sm: 14px;
+  --dn-text-base: 16px;
+  --dn-text-md: 17px;
+}
+
+.dark {
+  --bg:            oklch(0.16 0.01 60);
+  --bg-deep:       oklch(0.13 0.01 60);
+  --paper:         oklch(0.20 0.01 60);
+  --ink:           oklch(0.96 0.008 90);
+  --ink-2:         oklch(0.82 0.008 90);
+  --ink-3:         oklch(0.62 0.01 80);
+  --ink-4:         oklch(0.48 0.01 80);
+  --hairline:      oklch(0.32 0.01 70);
+  --hairline-soft: oklch(0.26 0.01 70);
+  --card-y: oklch(0.28 0.04 95);
+  --card-p: oklch(0.26 0.035 350);
+  --card-v: oklch(0.26 0.04 305);
+  --card-o: oklch(0.27 0.045 50);
+  --card-m: oklch(0.27 0.04 165);
+  --card-b: oklch(0.26 0.04 230);
+  --card-s: oklch(0.24 0.01 80);
+  --domino-accent:      oklch(0.70 0.19 35);
+  --domino-accent-deep: oklch(0.60 0.17 35);
+  --domino-star:        oklch(0.86 0.14 85);
+  --dn-nav-bg: oklch(0.14 0.01 60 / 0.92);
+  --dn-icon-hover: oklch(1 0 0 / 0.08);
+  --dn-backdrop: oklch(0 0 0 / 0.55);
+  --dn-grabber: oklch(1 0 0 / 0.2);
+  --dn-grid-dot: oklch(1 0 0 / 0.1);
+  --dn-search-ring: oklch(0.40 0.02 60 / 0.45);
+  --dn-card-border: oklch(1 0 0 / 0.06);
+  --dn-card-shadow: 0 1px 0 oklch(0 0 0 / 0.2), 0 1px 10px oklch(0 0 0 / 0.25);
+  --dn-card-shadow-hover: 0 2px 0 oklch(0 0 0 / 0.2), 0 12px 28px oklch(0 0 0 / 0.35);
 }
 
 /* ── Domino shared CSS classes ───────────────────────────── */
+.dn-app {
+  font-family: var(--font-figtree, ui-sans-serif, sans-serif);
+  font-size: var(--dn-text-base);
+  color: var(--ink);
+  line-height: 1.45;
+}
 .dn-wordmark {
-  font-family: var(--font-serif);
-  font-weight: 800; line-height: 1; letter-spacing: -0.02em; color: var(--ink);
+  font-family: "Basteleur", var(--font-serif), serif;
+  font-weight: 700; line-height: 1; letter-spacing: -0.02em; color: var(--ink);
+}
+.dn-logo {
+  color: var(--ink);
+  line-height: 1;
+  text-decoration: none;
+}
+.dn-logo-text {
+  font-family: "Basteleur", var(--font-serif), serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.dn-logo-dot {
+  color: var(--domino-accent);
 }
 .dn-card {
   border-radius: 18px; padding: 14px;
   display: flex; flex-direction: column; gap: 10px;
-  border: 1px solid oklch(0 0 0 / 0.04);
-  box-shadow: 0 1px 0 oklch(0 0 0 / 0.02), 0 1px 8px oklch(0 0 0 / 0.03);
+  border: 1px solid var(--dn-card-border);
+  box-shadow: var(--dn-card-shadow);
   transition: transform 180ms cubic-bezier(.2,.7,.2,1), box-shadow 180ms ease;
   cursor: pointer; break-inside: avoid; margin-bottom: 12px;
 }
-.dn-card:hover { transform: translateY(-2px); box-shadow: 0 2px 0 oklch(0 0 0 / 0.02), 0 10px 24px oklch(0 0 0 / 0.06); }
+.dn-card:hover { transform: translateY(-2px); box-shadow: var(--dn-card-shadow-hover); }
 .dn-card:active { transform: translateY(0); }
 .dn-masonry { column-count: 2; column-gap: 12px; }
 .dn-masonry > * { width: 100%; }
 .dn-hscroll { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
 .dn-hscroll::-webkit-scrollbar { display: none; }
 .dn-chip {
-  height: 34px; padding: 0 14px; border-radius: 9999px;
+  height: 36px; padding: 0 16px; border-radius: 9999px;
   border: 1px solid var(--hairline); background: var(--paper); color: var(--ink-2);
-  font-size: 13.5px; font-weight: 500;
+  font-size: var(--dn-text-sm); font-weight: 500;
   display: inline-flex; align-items: center; gap: 6px;
   white-space: nowrap; transition: all 140ms ease; cursor: pointer; font-family: inherit;
 }
@@ -188,11 +272,11 @@
   color: var(--ink-3); transition: background 140ms ease, color 140ms ease;
   cursor: pointer; background: none; border: 0; padding: 0; font: inherit;
 }
-.dn-icon-btn:hover { background: oklch(0 0 0 / 0.06); color: var(--ink); }
+.dn-icon-btn:hover { background: var(--dn-icon-hover); color: var(--ink); }
 .dn-icon-btn.starred { color: var(--domino-star); }
 .dn-icon-btn.pinned { color: var(--domino-accent); transform: rotate(-12deg); }
 .dn-backdrop {
-  position: fixed; inset: 0; background: oklch(0 0 0 / 0.3);
+  position: fixed; inset: 0; background: var(--dn-backdrop);
   z-index: 40; animation: dnFadeIn 200ms ease;
 }
 .dn-sheet {
@@ -204,27 +288,27 @@
 }
 .dn-grabber {
   width: 36px; height: 4px; border-radius: 2px;
-  background: oklch(0 0 0 / 0.15); margin: 6px auto 14px;
+  background: var(--dn-grabber); margin: 6px auto 14px;
 }
 .dn-bottom-nav {
   display: grid; grid-template-columns: repeat(4, 1fr);
-  background: oklch(0.99 0.005 90 / 0.92);
+  background: var(--dn-nav-bg);
   backdrop-filter: blur(20px) saturate(1.5); -webkit-backdrop-filter: blur(20px) saturate(1.5);
   border-top: 1px solid var(--hairline-soft);
-  padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
   flex-shrink: 0; position: relative;
 }
 .dn-tab {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 3px; padding: 6px 0; color: var(--ink-4); font-size: 11px; font-weight: 500;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 48px; padding: 8px 0; color: var(--ink-4);
   transition: color 160ms ease; position: relative;
-  background: none; border: 0; cursor: pointer; font-family: inherit;
+  background: none; border: 0; cursor: pointer;
 }
 .dn-tab.active { color: var(--domino-accent); }
 .dn-tab svg { transition: transform 200ms cubic-bezier(.2,.8,.2,1); }
-.dn-tab.active svg { transform: translateY(-1px) scale(1.06); }
+.dn-tab.active svg { transform: scale(1.08); }
 .dn-tab-dot {
-  position: absolute; bottom: 2px;
+  position: absolute; bottom: 6px;
   width: 4px; height: 4px; border-radius: 9999px; background: var(--domino-accent);
 }
 .dn-fab {
@@ -245,16 +329,16 @@
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 .dn-search-bar:focus-within {
-  border-color: var(--ink-2); box-shadow: 0 0 0 4px oklch(0.85 0.01 80 / 0.5);
+  border-color: var(--ink-2); box-shadow: 0 0 0 4px var(--dn-search-ring);
 }
 .dn-search-bar input {
-  flex: 1; border: 0; outline: 0; background: transparent; font-size: 15px; color: var(--ink);
+  flex: 1; border: 0; outline: 0; background: transparent; font-size: var(--dn-text-base); color: var(--ink);
 }
 .dn-search-bar input::placeholder { color: var(--ink-4); }
 .dn-grid-bg {
   position: absolute; inset: 0;
   background-image:
-    radial-gradient(circle, oklch(0 0 0 / 0.08) 1px, transparent 1px);
+    radial-gradient(circle, var(--dn-grid-dot) 1px, transparent 1px);
   background-size: 24px 24px; opacity: 0.5; pointer-events: none;
 }
 

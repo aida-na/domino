@@ -47,3 +47,8 @@ Thumbs.db
 ios/**/xcuserdata/
 ios/**/*.xcuserstate
 ios/build/
+
+# Font package extras (runtime only needs webfonts/otf)
+frontend/public/fonts/basteleur-master/documentation/
+frontend/public/fonts/basteleur-master/sources/
+frontend/public/fonts/basteleur-master/fonts/ttf/

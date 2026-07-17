@@ -1,4 +1,4 @@
-"""Domino weekly digest — Sunday 5pm in each user's local timezone."""
+"""Domino weekly digest — Sunday at each user's digest_time in their timezone."""
 
 import logging
 from datetime import datetime, timedelta, timezone
@@ -12,11 +12,26 @@ from app.services.gemini_client import DEFAULT_GEMINI_MODEL, generate_with_retry
 
 logger = logging.getLogger(__name__)
 
-_WINDOW_SECONDS = 900  # 15-minute window — cron runs every 15 min
+_WINDOW_SECONDS = 900  # ±15 min — GitHub Actions cron runs every 15 min
+
+
+def _parse_digest_time(digest_time: str | None) -> tuple[int, int]:
+    """Parse HH:MM digest_time; fall back to 08:00."""
+    raw = (digest_time or "08:00").strip()
+    try:
+        parts = raw.split(":")
+        if len(parts) != 2:
+            return 8, 0
+        hour, minute = int(parts[0]), int(parts[1])
+        if not (0 <= hour <= 23 and 0 <= minute <= 59):
+            return 8, 0
+        return hour, minute
+    except (TypeError, ValueError):
+        return 8, 0
 
 
 def _is_weekly_digest_window(user: DominoUser, now_utc: datetime) -> bool:
-    """True if it's Sunday and within ±15 min of 17:00 in the user's timezone."""
+    """True if it's Sunday and within ±15 min of the user's digest_time locally."""
     try:
         tz = ZoneInfo(user.timezone)
     except Exception:
@@ -26,7 +41,8 @@ def _is_weekly_digest_window(user: DominoUser, now_utc: datetime) -> bool:
     if user_now.weekday() != 6:  # 6 = Sunday
         return False
 
-    target = user_now.replace(hour=17, minute=0, second=0, microsecond=0)
+    hour, minute = _parse_digest_time(user.digest_time)
+    target = user_now.replace(hour=hour, minute=minute, second=0, microsecond=0)
     return abs((user_now - target).total_seconds()) <= _WINDOW_SECONDS
 
 
@@ -59,9 +75,12 @@ def _digest_to_html(text: str) -> str:
 </html>"""
 
 
-async def send_weekly_digests(force: bool = False) -> dict:
-    """Send weekly digest to users whose local time is Sunday ±15 min of 5pm.
-    Pass force=True to bypass the time window check (for testing)."""
+async def send_weekly_digests(force: bool = False, phone: str | None = None) -> dict:
+    """Send weekly digest to users whose local time is Sunday ±15 min of digest_time.
+
+    Pass force=True to bypass the time window check (for testing / email collection).
+    Pass phone= to process only that user.
+    """
     from app.services.email import send_email
 
     now_utc = datetime.now(timezone.utc)
@@ -70,11 +89,18 @@ async def send_weekly_digests(force: bool = False) -> dict:
     skipped_count = 0
 
     async with AsyncSessionLocal() as db:
-        users_result = await db.execute(select(DominoUser))
+        query = select(DominoUser)
+        if phone is not None:
+            query = query.where(DominoUser.phone == phone)
+        users_result = await db.execute(query)
         users = users_result.scalars().all()
 
         for user in users:
             try:
+                if user.digest_opted_out:
+                    skipped_count += 1
+                    continue
+
                 if not force and not _is_weekly_digest_window(user, now_utc):
                     skipped_count += 1
                     continue
@@ -109,7 +135,7 @@ async def send_weekly_digests(force: bool = False) -> dict:
                     f"The user saved {n} things this week across domino (their second brain).\n\n"
                     f"Items:\n{summaries}\n\n"
                     "Write a weekly WhatsApp digest. Format exactly like this (use actual newlines, not \\n):\n\n"
-                    "🧠 your week in domino\n\n"
+                    "your week in domino\n\n"
                     f"you captured {n} things this week.\n\n"
                     "*themes that emerged:*\n"
                     "• [Theme name]: [1-2 sentence synthesis of related items]\n"
@@ -132,7 +158,7 @@ async def send_weekly_digests(force: bool = False) -> dict:
                     topic_str = ", ".join(topics_used) if topics_used else "various topics"
                     concept_str = ", ".join(top_concepts[:5]) if top_concepts else ""
                     digest_text = (
-                        f"🧠 your week in domino\n\n"
+                        f"your week in domino\n\n"
                         f"you captured {n} thing{'s' if n != 1 else ''} this week "
                         f"across {topic_str}."
                         + (f"\n\ntop concepts: {concept_str}" if concept_str else "")
@@ -141,7 +167,7 @@ async def send_weekly_digests(force: bool = False) -> dict:
                 if user.email:
                     ok = send_email(
                         to=user.email,
-                        subject="🧠 your week in domino",
+                        subject="your week in domino",
                         html=_digest_to_html(digest_text),
                     )
                     logger.info("[digest] send_email to %s → %s", user.email, "ok" if ok else "FAILED")

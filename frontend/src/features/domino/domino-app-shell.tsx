@@ -20,7 +20,7 @@ export function DominoAppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith('/me') ? 'me' : 'saved';
 
   return (
-    <div style={{
+    <div className="dn-app" style={{
       height: '100dvh',
       background: 'var(--bg)',
       display: 'flex',
@@ -46,9 +46,10 @@ export function DominoAppShell({ children }: { children: React.ReactNode }) {
               key={id}
               className={`dn-tab${isActive ? ' active' : ''}`}
               onClick={() => router.push(href)}
+              aria-label={label}
+              aria-current={isActive ? 'page' : undefined}
             >
-              <Icon size={22} filled={isActive} />
-              <span>{label}</span>
+              <Icon size={24} filled={isActive} />
               {isActive && <div className="dn-tab-dot" />}
             </button>
           );

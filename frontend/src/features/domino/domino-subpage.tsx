@@ -11,7 +11,7 @@ export function DominoSubpage({ title, children }: { title: string; children: Re
         >
           ← back to domino
         </Link>
-        <h1 className="mb-6 font-compagnon text-2xl font-bold tracking-wider text-foreground">{title}</h1>
+        <h1 className="mb-6 font-compagnon text-2xl text-foreground">{title}</h1>
         <div className="space-y-4 text-sm leading-relaxed text-muted-foreground">{children}</div>
       </div>
     </main>

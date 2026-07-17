@@ -21,11 +21,12 @@ export default function DominoFaqPage() {
       <section className="space-y-2 pt-2">
         <h2 className="text-base font-bold text-[#1A1208]">how do i get started?</h2>
         <p>
-          iMessage our number from the{' '}
-          <Link href="/" className="font-semibold text-[#ED4715] underline underline-offset-2">
-            domino home page
-          </Link>
-          . say hi — we&apos;ll walk you through the rest.
+          head to{' '}
+          <Link href="/login" className="font-semibold text-[#ED4715] underline underline-offset-2">
+            login
+          </Link>{' '}
+          and sign in with an iMessage code — or text our number from the home page. we only open a
+          few new seats each day; if we&apos;re full, join the waitlist and try tomorrow.
         </p>
       </section>
       <section className="space-y-2 pt-2">
@@ -40,9 +41,10 @@ export default function DominoFaqPage() {
       <section className="space-y-2 pt-2">
         <h2 className="text-base font-bold text-[#1A1208]">how does the iOS app work?</h2>
         <p>
-          sign in with the same phone number you use for iMessage (OTP, password, or magic link). your
-          saves sync with the web dashboard. from Safari, use Share → &quot;save to domino&quot; after
-          you&apos;ve signed into the app once.
+          sign in with the same phone number you use for iMessage (one-time code, or an optional
+          password after your first sign-in). we only open a few new seats each day — if we&apos;re
+          full, join the waitlist. your saves sync with the web dashboard. from Safari, use Share →
+          &quot;save to domino&quot; after you&apos;ve signed into the app once.
         </p>
       </section>
       <section className="space-y-2 pt-2">

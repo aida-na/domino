@@ -2,8 +2,8 @@ name: Weekly Digest
 
 on:
   schedule:
-    # Every Sunday at 9:00 AM UTC
-    - cron: '0 9 * * 0'
+    # Every 15 minutes so each user's local Sunday + digest_time window can match
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -13,6 +13,6 @@ jobs:
       - name: Trigger weekly digest
         run: |
           curl -X POST "${{ secrets.DOMINO_API_URL }}/api/v1/digest/trigger" \
-            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            -H "X-Internal-Secret: ${{ secrets.DOMINO_INTERNAL_SECRET }}" \
             -H "Content-Type: application/json" \
             --fail

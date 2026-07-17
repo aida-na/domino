@@ -5,14 +5,18 @@ import { useSearchParams } from "next/navigation"
 import { X } from "lucide-react"
 import { motion } from "framer-motion"
 
-function WaitlistModalInner({ onClose }: { onClose: () => void }) {
+function WaitlistModalInner({
+  onClose,
+  variant = "default",
+}: {
+  onClose: () => void
+  variant?: "default" | "full"
+}) {
   const searchParams = useSearchParams()
   const refCode = searchParams.get("ref") ?? ""
   const [email, setEmail] = useState("")
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
   const [error, setError] = useState("")
-
-  void refCode; // ref code available for future use
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -22,10 +26,20 @@ function WaitlistModalInner({ onClose }: { onClose: () => void }) {
       const res = await fetch("/api/v1/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({
+          email: email.trim(),
+          ...(refCode ? { ref: refCode } : {}),
+        }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.detail || "something went wrong")
+      if (!res.ok) {
+        const detail = data.detail
+        const msg =
+          typeof detail === "string"
+            ? detail
+            : detail?.message || "something went wrong"
+        throw new Error(msg)
+      }
       setStatus("success")
       setEmail("")
     } catch (err) {
@@ -73,9 +87,24 @@ function WaitlistModalInner({ onClose }: { onClose: () => void }) {
               <p className="mt-3 text-sm text-white/70">we&apos;ll be in touch soon.</p>
             </div>
           ) : (
-            <h2 className="font-compagnon text-[2.25rem] font-black leading-[0.92] text-white lowercase">
-              join the<br />*waitlist
-            </h2>
+            <>
+              <h2 className="font-compagnon text-[2.25rem] font-black leading-[0.92] text-white lowercase">
+                {variant === "full" ? (
+                  <>
+                    full<br />*today
+                  </>
+                ) : (
+                  <>
+                    join the<br />*waitlist
+                  </>
+                )}
+              </h2>
+              {variant === "full" ? (
+                <p className="mt-3 text-sm text-white/75">
+                  we only let a few people in each day. leave your email and we&apos;ll ping you.
+                </p>
+              ) : null}
+            </>
           )}
 
         </div>
@@ -112,10 +141,16 @@ function WaitlistModalInner({ onClose }: { onClose: () => void }) {
   )
 }
 
-export function WaitlistModal({ onClose }: { onClose: () => void }) {
+export function WaitlistModal({
+  onClose,
+  variant = "default",
+}: {
+  onClose: () => void
+  variant?: "default" | "full"
+}) {
   return (
     <Suspense fallback={null}>
-      <WaitlistModalInner onClose={onClose} />
+      <WaitlistModalInner onClose={onClose} variant={variant} />
     </Suspense>
   )
 }

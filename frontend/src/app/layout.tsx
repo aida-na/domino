@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Figtree, Newsreader, JetBrains_Mono } from "next/font/google";
 import { DominoAuthProvider } from "@/features/domino/domino-auth-context";
+import { DominoThemeProvider } from "@/features/domino/domino-theme";
 import "./globals.css";
 
 const figtree = Figtree({
@@ -41,11 +42,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('domino_theme');if(t==='dark'){document.documentElement.classList.add('dark');document.documentElement.dataset.theme='dark';}}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className={`${figtree.variable} ${newsreader.variable} ${jetbrainsMono.variable} antialiased`} style={{ fontFamily: 'var(--font-figtree, ui-sans-serif, sans-serif)' }}>
-        <DominoAuthProvider>
-          {children}
-        </DominoAuthProvider>
+        <DominoThemeProvider>
+          <DominoAuthProvider>
+            {children}
+          </DominoAuthProvider>
+        </DominoThemeProvider>
       </body>
     </html>
   );
