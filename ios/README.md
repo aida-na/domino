@@ -132,6 +132,17 @@ After editing `project.yml`:
 cd ios && xcodegen generate
 ```
 
+## Unit tests
+
+```bash
+cd ios
+chmod +x scripts/test.sh
+./scripts/test.sh
+```
+
+Uses full Xcode (`DEVELOPER_DIR`) so `simctl` works even if CLI tools are selected.
+Covers `PhoneNormalizer` and `APIError` parsing (including `signup_full`).
+
 ## API
 
 Direct to `https://domino-414681726671.us-central1.run.app/api/v1` — no CORS issues (native apps aren't browsers).

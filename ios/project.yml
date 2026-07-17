@@ -79,3 +79,26 @@ targets:
           - group.fyi.domino.app
         keychain-access-groups:
           - $(AppIdentifierPrefix)group.fyi.domino.app
+
+  DominoTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: DominoTests
+    dependencies:
+      - target: Domino
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: fyi.domino.app.tests
+      GENERATE_INFOPLIST_FILE: YES
+      CURRENT_PROJECT_VERSION: 1
+      MARKETING_VERSION: 1.0
+schemes:
+  Domino:
+    build:
+      targets:
+        Domino: all
+        DominoShare: all
+        DominoTests: [test]
+    test:
+      targets:
+        - DominoTests

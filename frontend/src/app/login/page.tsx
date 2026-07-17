@@ -56,13 +56,15 @@ export default function DominoLoginPage() {
     if (!isLoading && sessionToken) router.replace('/dashboard');
   }, [isLoading, sessionToken, router]);
 
-  useEffect(() => {
+  function switchMode(next: SignInMode) {
+    setMode(next);
     setError(null);
-    if (mode !== 'otp') {
+    setResendNotice(null);
+    if (next !== 'otp') {
       setOtpStep('phone');
       setCode('');
     }
-  }, [mode]);
+  }
 
   function handleSignupFull(err: unknown) {
     if (err instanceof DominoApiError && err.code === 'signup_full') {
@@ -242,7 +244,7 @@ export default function DominoLoginPage() {
               <button
                 type="button"
                 className="font-semibold text-primary underline underline-offset-2"
-                onClick={() => setMode('password')}
+                onClick={() => switchMode('password')}
               >
                 use password
               </button>
@@ -381,7 +383,7 @@ export default function DominoLoginPage() {
               <button
                 type="button"
                 className="font-semibold text-primary underline underline-offset-2"
-                onClick={() => setMode('otp')}
+                onClick={() => switchMode('otp')}
               >
                 use iMessage code instead
               </button>

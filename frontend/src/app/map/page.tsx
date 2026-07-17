@@ -137,7 +137,7 @@ function MapCanvas({ items, onOpen }: { items: Bookmark[]; onOpen: (item: Bookma
     const startDelta = type === 'hub'
       ? (hubDelta[id] || { dx: 0, dy: 0 })
       : (nodeDelta[id] || { dx: 0, dy: 0 });
-    dragRef.current = { type, id, startX: e.clientX, startY: e.clientY, startDelta, t: Date.now(), moved: false };
+    dragRef.current = { type, id, startX: e.clientX, startY: e.clientY, startDelta, t: e.timeStamp, moved: false };
   }
 
   function onPointerMove(e: React.PointerEvent) {
@@ -157,7 +157,7 @@ function MapCanvas({ items, onOpen }: { items: Bookmark[]; onOpen: (item: Bookma
 
   function onPointerUp(e: React.PointerEvent, item?: Bookmark) {
     const dr = dragRef.current;
-    if (dr && !dr.moved && (Date.now() - dr.t) < 250 && item) {
+    if (dr && !dr.moved && (e.timeStamp - dr.t) < 250 && item) {
       onOpen(item);
     }
     dragRef.current = null;
@@ -169,7 +169,7 @@ function MapCanvas({ items, onOpen }: { items: Bookmark[]; onOpen: (item: Bookma
       type: 'pan', id: null,
       startX: e.clientX, startY: e.clientY,
       startDelta: { dx: cam.x, dy: cam.y },
-      t: Date.now(), moved: false,
+      t: e.timeStamp, moved: false,
     };
   }
 

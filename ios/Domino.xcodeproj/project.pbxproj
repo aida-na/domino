@@ -22,6 +22,7 @@
 		36B090B3C8F7E30CC4949EAB /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 23E284125AF3F5C92F202A47 /* PrivacyInfo.xcprivacy */; };
 		3804981AACF1E7061C977FE0 /* NoteEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB1133F4140CDFD9C6DA74C /* NoteEditorView.swift */; };
 		3D73E4AE5416095EB3A14754 /* AuthTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB9FCEC1559643AF482BF406 /* AuthTokens.swift */; };
+		3F0AC81397464C3F106B1D6E /* APIErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0451DCC77C1CCC4F0AC5DBFF /* APIErrorTests.swift */; };
 		5E14A1E590FEDA91C6DF6819 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E65BEF2A4B37F5FA84AE92 /* LoginView.swift */; };
 		6A2A183E4080084E721E3DB7 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4AB418B70E97CDA092E7AB9 /* AppConfig.swift */; };
 		6FB1300791C503968C535806 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6D34CBF441513A5E14CA139 /* KeychainStore.swift */; };
@@ -55,6 +56,7 @@
 		E21CDF87BAB5161CEDC1CC3F /* Newsreader-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 9FBD26114C2BAFBB8D89320C /* Newsreader-Variable.ttf */; };
 		E286C95D48FB3092541FDAAD /* DominoColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F2EA43E7161E67B6F45130E /* DominoColors.swift */; };
 		E4538231044E4E5880A63759 /* DominoColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F2EA43E7161E67B6F45130E /* DominoColors.swift */; };
+		EB65D3099D3A0A582DC88360 /* PhoneNormalizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD9A4848F037C89929891F6D /* PhoneNormalizerTests.swift */; };
 		ECE381773F37EBF9E31676C8 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6D34CBF441513A5E14CA139 /* KeychainStore.swift */; };
 		F139B02F2160BDB3CC1E17A7 /* DominoComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = C69E9064E4B5907DE6137A3C /* DominoComponents.swift */; };
 		F3F6642DB821C483C2BC0547 /* AuthTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB9FCEC1559643AF482BF406 /* AuthTokens.swift */; };
@@ -63,6 +65,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		834BC069FF13C97B84732277 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B03AEC77142C12A1D3541FAA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3F79A5BF233A7574E4A8C552;
+			remoteInfo = Domino;
+		};
 		8F83A13FD1CF835632D42BB2 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = B03AEC77142C12A1D3541FAA /* Project object */;
@@ -87,8 +96,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0451DCC77C1CCC4F0AC5DBFF /* APIErrorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIErrorTests.swift; sourceTree = "<group>"; };
 		051695AF117FA25EF1BE965C /* DominoAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DominoAPI.swift; sourceTree = "<group>"; };
 		0782CBF1832C402DE769DE23 /* FoldersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldersView.swift; sourceTree = "<group>"; };
+		0A1A761656ADD4C0C7B28F32 /* DominoTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = DominoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0F2EA43E7161E67B6F45130E /* DominoColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DominoColors.swift; sourceTree = "<group>"; };
 		16E5D8B9305B51F6D270CF3E /* MapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapView.swift; sourceTree = "<group>"; };
 		1B6A9620481E40235DB2E771 /* DiscoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverView.swift; sourceTree = "<group>"; };
@@ -133,6 +144,7 @@
 		DC98FBB3C09241EC0EAACB2E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		DF2032772F6EC5C9913DC400 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		E7F7C1F10CEE0A9D46A23280 /* Item.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Item.swift; sourceTree = "<group>"; };
+		FD9A4848F037C89929891F6D /* PhoneNormalizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneNormalizerTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -154,6 +166,15 @@
 				C1D34997406495F7E10B5946 /* PhoneNormalizer.swift */,
 			);
 			path = Auth;
+			sourceTree = "<group>";
+		};
+		193197243C1731691B1E36AA /* DominoTests */ = {
+			isa = PBXGroup;
+			children = (
+				0451DCC77C1CCC4F0AC5DBFF /* APIErrorTests.swift */,
+				FD9A4848F037C89929891F6D /* PhoneNormalizerTests.swift */,
+			);
+			path = DominoTests;
 			sourceTree = "<group>";
 		};
 		22679F62150CE02A3CA463BF /* Auth */ = {
@@ -284,6 +305,7 @@
 			children = (
 				80A2D30BAAD9732322319D09 /* Domino.app */,
 				3E5594805D773C3D0A587BF1 /* DominoShare.appex */,
+				0A1A761656ADD4C0C7B28F32 /* DominoTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -356,6 +378,7 @@
 				99724E029E1A12C73D31F315 /* Config */,
 				454CD8562C1D05EC5727FB26 /* Domino */,
 				39445475ED86C56AA482F4B5 /* DominoShare */,
+				193197243C1731691B1E36AA /* DominoTests */,
 				872CEBA8265F5CE0729F11D8 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -395,6 +418,24 @@
 			productReference = 80A2D30BAAD9732322319D09 /* Domino.app */;
 			productType = "com.apple.product-type.application";
 		};
+		7DE575EB91C6B992AEA746A4 /* DominoTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 09C518034A99AF3364185766 /* Build configuration list for PBXNativeTarget "DominoTests" */;
+			buildPhases = (
+				E5325987F31559797BDFE43F /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				FD02687476025FA695A10488 /* PBXTargetDependency */,
+			);
+			name = DominoTests;
+			packageProductDependencies = (
+			);
+			productName = DominoTests;
+			productReference = 0A1A761656ADD4C0C7B28F32 /* DominoTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		91EFEE4DC296F87E7BBD5107 /* DominoShare */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = B2D707251EFF3B01EB371C91 /* Build configuration list for PBXNativeTarget "DominoShare" */;
@@ -425,6 +466,9 @@
 					3F79A5BF233A7574E4A8C552 = {
 						DevelopmentTeam = 2CTC2JW55A;
 					};
+					7DE575EB91C6B992AEA746A4 = {
+						DevelopmentTeam = 2CTC2JW55A;
+					};
 					91EFEE4DC296F87E7BBD5107 = {
 						DevelopmentTeam = 2CTC2JW55A;
 					};
@@ -446,6 +490,7 @@
 			targets = (
 				3F79A5BF233A7574E4A8C552 /* Domino */,
 				91EFEE4DC296F87E7BBD5107 /* DominoShare */,
+				7DE575EB91C6B992AEA746A4 /* DominoTests */,
 			);
 		};
 /* End PBXProject section */
@@ -534,6 +579,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E5325987F31559797BDFE43F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3F0AC81397464C3F106B1D6E /* APIErrorTests.swift in Sources */,
+				EB65D3099D3A0A582DC88360 /* PhoneNormalizerTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -542,9 +596,33 @@
 			target = 91EFEE4DC296F87E7BBD5107 /* DominoShare */;
 			targetProxy = 8F83A13FD1CF835632D42BB2 /* PBXContainerItemProxy */;
 		};
+		FD02687476025FA695A10488 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3F79A5BF233A7574E4A8C552 /* Domino */;
+			targetProxy = 834BC069FF13C97B84732277 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		0FBE1EFA81D2397F8AA24BFF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = fyi.domino.app.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Domino.app/Domino";
+			};
+			name = Debug;
+		};
 		3982F6031B906867DDB18B12 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -706,6 +784,25 @@
 			};
 			name = Debug;
 		};
+		B80602C05ECB985373F5CAF4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = fyi.domino.app.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Domino.app/Domino";
+			};
+			name = Release;
+		};
 		CA4CD86F75A590528BA432B7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -754,6 +851,15 @@
 			buildConfigurations = (
 				7DD985EA256EC6054EA570DA /* Debug */,
 				8D8A7CD5A0BEBDAC7C4C82B5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		09C518034A99AF3364185766 /* Build configuration list for PBXNativeTarget "DominoTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0FBE1EFA81D2397F8AA24BFF /* Debug */,
+				B80602C05ECB985373F5CAF4 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

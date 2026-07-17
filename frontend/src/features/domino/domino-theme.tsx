@@ -5,7 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from 'react';
 
@@ -20,6 +20,19 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType | null>(null);
+
+const themeListeners = new Set<() => void>();
+
+function emitThemeChange() {
+  themeListeners.forEach((listener) => listener());
+}
+
+function subscribe(listener: () => void) {
+  themeListeners.add(listener);
+  return () => {
+    themeListeners.delete(listener);
+  };
+}
 
 function applyTheme(theme: DominoTheme) {
   const root = document.documentElement;
@@ -37,23 +50,29 @@ function readStoredTheme(): DominoTheme {
   return 'light';
 }
 
+function getSnapshot(): DominoTheme {
+  return readStoredTheme();
+}
+
+function getServerSnapshot(): DominoTheme {
+  return 'light';
+}
+
 export function DominoThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<DominoTheme>('light');
+  const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   useEffect(() => {
-    const initial = readStoredTheme();
-    setThemeState(initial);
-    applyTheme(initial);
-  }, []);
+    applyTheme(theme);
+  }, [theme]);
 
   const setTheme = useCallback((next: DominoTheme) => {
-    setThemeState(next);
     try {
       localStorage.setItem(THEME_KEY, next);
     } catch {
       /* ignore */
     }
     applyTheme(next);
+    emitThemeChange();
   }, []);
 
   const toggleTheme = useCallback(() => {
