@@ -34,6 +34,7 @@ export default function DominoLoginPage() {
   const [resending, setResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendNotice, setResendNotice] = useState<string | null>(null);
+  const [signupFull, setSignupFull] = useState(false);
   const [showWaitlist, setShowWaitlist] = useState(false);
 
   useEffect(() => {
@@ -56,6 +57,23 @@ export default function DominoLoginPage() {
     if (!isLoading && sessionToken) router.replace('/dashboard');
   }, [isLoading, sessionToken, router]);
 
+  useEffect(() => {
+    let cancelled = false;
+    dominoApi
+      .getSignupStatus()
+      .then((status) => {
+        if (cancelled || !status.full) return;
+        setSignupFull(true);
+        setShowWaitlist(true);
+      })
+      .catch(() => {
+        /* ignore — form still works; cap surfaces on verify */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   function switchMode(next: SignInMode) {
     setMode(next);
     setError(null);
@@ -69,6 +87,7 @@ export default function DominoLoginPage() {
   function handleSignupFull(err: unknown) {
     if (err instanceof DominoApiError && err.code === 'signup_full') {
       setError(err.message);
+      setSignupFull(true);
       setShowWaitlist(true);
       return true;
     }
@@ -391,23 +410,17 @@ export default function DominoLoginPage() {
           </form>
         )}
 
-        <p className="mt-8 max-w-[420px] text-xs leading-relaxed text-muted-foreground">
-          full today?{' '}
-          <button
-            type="button"
-            className="font-semibold text-primary underline underline-offset-2"
-            onClick={() => setShowWaitlist(true)}
-          >
-            join the waitlist
-          </button>
-          {' · '}
-          <a
-            href="mailto:aidana@dailylabs.co?subject=domino%20login"
-            className="font-semibold text-primary underline underline-offset-2"
-          >
-            email us
-          </a>
-        </p>
+        {signupFull ? (
+          <p className="mt-8 max-w-[420px] text-xs leading-relaxed text-muted-foreground">
+            <button
+              type="button"
+              className="font-semibold text-primary underline underline-offset-2"
+              onClick={() => setShowWaitlist(true)}
+            >
+              join the waitlist
+            </button>
+          </p>
+        ) : null}
       </div>
 
       <AnimatePresence>

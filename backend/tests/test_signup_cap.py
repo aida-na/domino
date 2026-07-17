@@ -5,7 +5,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.api.endpoints.auth import SignupFullError, assert_can_create_user, count_new_users_today
+from app.api.endpoints.auth import (
+    SignupFullError,
+    assert_can_create_user,
+    count_new_users_today,
+    signup_status,
+)
 from app.core.config import settings
 
 
@@ -56,3 +61,29 @@ async def test_count_new_users_today_uses_utc_midnight():
     db.execute.assert_awaited_once()
     # sanity: "today" should be UTC
     assert datetime.now(timezone.utc).tzinfo is not None
+
+
+@pytest.mark.asyncio
+async def test_signup_status_full_when_at_limit(monkeypatch):
+    monkeypatch.setattr(settings, "DAILY_NEW_USER_LIMIT", 5)
+
+    db = AsyncMock()
+    result = MagicMock()
+    result.scalar_one.return_value = 5
+    db.execute = AsyncMock(return_value=result)
+
+    status = await signup_status(db)
+    assert status == {"full": True, "limit": 5, "count": 5}
+
+
+@pytest.mark.asyncio
+async def test_signup_status_open_under_limit(monkeypatch):
+    monkeypatch.setattr(settings, "DAILY_NEW_USER_LIMIT", 5)
+
+    db = AsyncMock()
+    result = MagicMock()
+    result.scalar_one.return_value = 2
+    db.execute = AsyncMock(return_value=result)
+
+    status = await signup_status(db)
+    assert status == {"full": False, "limit": 5, "count": 2}

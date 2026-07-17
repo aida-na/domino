@@ -251,6 +251,16 @@ async def get_domino_user(
 # ---------------------------------------------------------------------------
 
 
+@router.get("/signup-status")
+async def signup_status(db: AsyncSession = Depends(get_db)):
+    """Whether new signups are blocked for the rest of today (UTC)."""
+    limit = settings.DAILY_NEW_USER_LIMIT
+    if limit <= 0:
+        return {"full": False, "limit": 0, "count": 0}
+    count = await count_new_users_today(db)
+    return {"full": count >= limit, "limit": limit, "count": count}
+
+
 class MagicLinkRequest(BaseModel):
     phone: str = Field(..., min_length=8, max_length=40)
 

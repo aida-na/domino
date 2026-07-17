@@ -96,7 +96,22 @@ function throwApiError(body: unknown, status: number): never {
   throw new DominoApiError(message || `Request failed: ${status}`, code);
 }
 
+export interface DominoSignupStatus {
+  full: boolean;
+  limit: number;
+  count: number;
+}
+
 export const dominoApi = {
+  async getSignupStatus(): Promise<DominoSignupStatus> {
+    const res = await fetch(`${BASE}/auth/signup-status`);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throwApiError(body, res.status);
+    }
+    return res.json() as Promise<DominoSignupStatus>;
+  },
+
   async requestOtp(phone: string): Promise<{ ok: boolean }> {
     const res = await fetch(`${BASE}/auth/otp/request`, {
       method: 'POST',
