@@ -15,7 +15,15 @@ from app.core.config import settings
 from app.db.session import AsyncSessionLocal, get_db
 from app.models.domino import DominoItem, DominoMessage, DominoUser
 from app.services.digest import send_weekly_digests
-from app.services.processor import detect_input_type, process_image, process_note, process_url
+from app.services.processor import (
+    classify_topics,
+    detect_input_type,
+    normalize_topics,
+    process_image,
+    process_note,
+    process_url,
+    topic_is_default,
+)
 from app.services.gemini_client import DEFAULT_GEMINI_MODEL
 
 logger = logging.getLogger(__name__)
@@ -123,13 +131,15 @@ async def _save_item(phone: str, raw: str, db: AsyncSession) -> DominoItem | Non
 
     if input_type in ("link", "pdf"):
         result = await process_url(raw)
+        topics = list(result.topics or ([result.topic] if result.topic else ["General"]))
         item = DominoItem(
             user_phone=phone,
             raw_input=raw,
             input_type=result.input_type,
             extracted_text=result.extracted_text or None,
             summary=result.summary or None,
-            topic=result.topic or None,
+            topic=result.topic or topics[0],
+            topics=topics,
             key_ideas=result.key_ideas or None,
         )
         db.add(item)
@@ -144,6 +154,7 @@ async def _save_item(phone: str, raw: str, db: AsyncSession) -> DominoItem | Non
         extracted_text=raw,
         summary=None,
         topic="Inbox",
+        topics=["Inbox"],
         key_ideas=[],
     )
     db.add(item)
@@ -420,6 +431,7 @@ async def _handle_image(phone: str, media_url: str, content_type: str, db: Async
         description = "photo"
 
     result = await process_image(description)
+    topics = list(result.topics or ([result.topic] if result.topic else ["General"]))
 
     item = DominoItem(
         user_phone=phone,
@@ -427,7 +439,8 @@ async def _handle_image(phone: str, media_url: str, content_type: str, db: Async
         input_type="image",
         extracted_text=description,
         summary=None,
-        topic=result.topic or None,
+        topic=result.topic or topics[0],
+        topics=topics,
         key_ideas=None,
     )
     db.add(item)
@@ -461,6 +474,7 @@ async def _handle_voice(phone: str, media_url: str, content_type: str, db: Async
 
     # Voice → saved as note
     result = await process_note(transcript)
+    topics = list(result.topics or ([result.topic] if result.topic else ["Inbox"]))
 
     item = DominoItem(
         user_phone=phone,
@@ -468,7 +482,8 @@ async def _handle_voice(phone: str, media_url: str, content_type: str, db: Async
         input_type="note",
         extracted_text=transcript,
         summary=None,
-        topic=result.topic or None,
+        topic=result.topic or topics[0],
+        topics=topics,
         key_ideas=None,
     )
     db.add(item)
@@ -891,6 +906,11 @@ async def debug_digest(
 
     result = []
     for user in users:
+        total = await db.execute(
+            select(sqlfunc.count()).select_from(DominoItem).where(
+                DominoItem.user_phone == user.phone,
+            )
+        )
         unsent = await db.execute(
             select(sqlfunc.count()).select_from(DominoItem).where(
                 DominoItem.user_phone == user.phone,
@@ -911,8 +931,66 @@ async def debug_digest(
             "digest_opted_out": bool(user.digest_opted_out),
             "timezone": user.timezone,
             "digest_time": user.digest_time,
+            "total_items": total.scalar(),
             "unsent_items_last_7d": unsent.scalar(),
             "total_sent_items": sent.scalar(),
         })
 
-    return {"users": result, "email_from": settings.EMAIL_FROM}
+    # Items keyed to phones with no user row (should be empty under FK, but useful if orphans exist)
+    orphan_rows = await db.execute(
+        select(DominoItem.user_phone, sqlfunc.count())
+        .where(
+            DominoItem.user_phone.notin_(select(DominoUser.phone))
+        )
+        .group_by(DominoItem.user_phone)
+    )
+    orphans = [
+        {"phone": phone[-4:].rjust(len(phone), "*"), "total_items": count}
+        for phone, count in orphan_rows.all()
+    ]
+
+    return {"users": result, "orphans": orphans, "email_from": settings.EMAIL_FROM}
+
+
+@router.post("/items/reclassify-defaults")
+async def reclassify_default_topics(
+    x_internal_secret: str | None = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+    limit: int = 50,
+):
+    """Re-run topic classification for items still on Inbox/General (links + notes)."""
+    if x_internal_secret != settings.DOMINO_INTERNAL_SECRET:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    result = await db.execute(
+        select(DominoItem)
+        .where(DominoItem.topic.in_(["General", "Inbox", "general", "inbox"]))
+        .order_by(DominoItem.created_at.desc())
+        .limit(min(limit, 200))
+    )
+    items = list(result.scalars().all())
+    updated: list[dict[str, Any]] = []
+
+    for item in items:
+        if not topic_is_default(item.topic):
+            continue
+        text = (item.extracted_text or item.raw_input or "").strip()
+        if not text:
+            continue
+        url = item.raw_input if detect_input_type(item.raw_input or "") == "link" else None
+        new_topics = normalize_topics(await classify_topics(text, url=url))
+        if not new_topics or new_topics[0].lower() == (item.topic or "").lower():
+            continue
+        item.topic = new_topics[0]
+        item.topics = new_topics
+        updated.append(
+            {
+                "id": str(item.id),
+                "topic": item.topic,
+                "topics": item.topics,
+                "raw": (item.raw_input or "")[:80],
+            }
+        )
+
+    await db.commit()
+    return {"updated": len(updated), "items": updated}

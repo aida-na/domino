@@ -22,7 +22,66 @@ TOPIC_LIST = [
     "Cooking", "Travel", "Productivity", "Career", "Education", "General",
 ]
 
+# Gemini often returns near-miss labels ("Tech", "News", "AI"). Map those
+# onto TOPIC_LIST so we don't silently fall back to General.
+TOPIC_ALIASES: dict[str, str] = {
+    "tech": "Technology",
+    "technology": "Technology",
+    "tech news": "Technology",
+    "gadgets": "Technology",
+    "software": "Technology",
+    "startups": "Technology",
+    "startup": "Technology",
+    "venture": "Business",
+    "venture capital": "Business",
+    "news": "Culture",
+    "media": "Culture",
+    "ai": "AI & Machine Learning",
+    "ml": "AI & Machine Learning",
+    "llm": "AI & Machine Learning",
+    "artificial intelligence": "AI & Machine Learning",
+    "machine learning": "AI & Machine Learning",
+    "health": "Health & Wellness",
+    "wellness": "Health & Wellness",
+    "fitness": "Health & Wellness",
+    "medicine": "Health & Wellness",
+    "art": "Art & Design",
+    "design": "Art & Design",
+    "food": "Cooking",
+    "recipes": "Cooking",
+    "work": "Career",
+    "jobs": "Career",
+    "money": "Finance",
+    "investing": "Finance",
+    "climate": "Environment",
+    "books": "Literature",
+    "writing": "Literature",
+}
+
+# When extraction/classification yields only General, use the link host.
+_HOST_TOPIC_HINTS: dict[str, str] = {
+    "techcrunch.com": "Technology",
+    "theverge.com": "Technology",
+    "wired.com": "Technology",
+    "arstechnica.com": "Technology",
+    "engadget.com": "Technology",
+    "cnet.com": "Technology",
+    "zdnet.com": "Technology",
+    "openai.com": "AI & Machine Learning",
+    "anthropic.com": "AI & Machine Learning",
+    "huggingface.co": "AI & Machine Learning",
+    "bloomberg.com": "Finance",
+    "ft.com": "Finance",
+    "wsj.com": "Finance",
+    "nytimes.com": "Culture",
+    "newyorker.com": "Culture",
+    "theatlantic.com": "Culture",
+    "bbc.com": "Culture",
+    "bbc.co.uk": "Culture",
+}
+
 _PDF_RE = re.compile(r"(\.pdf$|/pdf/[\w.\-]+)", re.IGNORECASE)
+_URL_HOST_RE = re.compile(r"^https?://([^/]+)", re.IGNORECASE)
 
 
 def detect_input_type(raw: str, mime: str | None = None) -> str:
@@ -44,32 +103,110 @@ def detect_input_type(raw: str, mime: str | None = None) -> str:
 
 
 _TOPIC_PROMPT = """\
-Assign this content to exactly ONE topic from the list below.
-Return only the topic name — nothing else.
+Assign this content to up to THREE topics from the list below, ranked best-first.
+The first topic is the main label; the next two are secondary labels that also fit.
+Return JSON only — an array of 1 to 3 topic names.
+Use EXACT strings from the Topics list (e.g. "Technology", not "Tech" or "News").
+No markdown.
 
 Topics: {topics}
 
 Content:
 {preview}
 
-Topic:"""
+JSON:"""
 
 
-async def classify_topic(text: str) -> str:
+def _canonical_topic(label: str) -> str | None:
+    """Resolve a freeform label to a TOPIC_LIST entry (or Inbox)."""
+    key = str(label or "").strip().lower()
+    if not key:
+        return None
+    options = {t.lower(): t for t in TOPIC_LIST}
+    options["inbox"] = "Inbox"
+    if key in options:
+        return options[key]
+    if key in TOPIC_ALIASES:
+        return TOPIC_ALIASES[key]
+    # Partial contains: "ai tools" / "tech news" → mapped topic
+    for alias, canonical in TOPIC_ALIASES.items():
+        if len(alias) >= 3 and alias in key:
+            return canonical
+    return None
+
+
+def topic_hint_from_url(url: str) -> str | None:
+    """Best-effort topic from a known publisher host."""
+    m = _URL_HOST_RE.match((url or "").strip())
+    if not m:
+        return None
+    host = m.group(1).lower()
+    if host.startswith("www."):
+        host = host[4:]
+    if host in _HOST_TOPIC_HINTS:
+        return _HOST_TOPIC_HINTS[host]
+    # subdomain match: news.techcrunch.com
+    for suffix, topic in _HOST_TOPIC_HINTS.items():
+        if host.endswith("." + suffix):
+            return topic
+    return None
+
+
+def normalize_topics(
+    labels: list[str] | None,
+    *,
+    fallback: str = "General",
+    limit: int = 3,
+) -> list[str]:
+    """Map freeform labels onto TOPIC_LIST (+ Inbox), dedupe, cap at limit."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for label in labels or []:
+        canonical = _canonical_topic(label)
+        if not canonical or canonical.lower() in seen:
+            continue
+        out.append(canonical)
+        seen.add(canonical.lower())
+        if len(out) >= limit:
+            break
+    if not out:
+        fb = _canonical_topic(fallback) or "General"
+        return [fb]
+    return out
+
+
+async def classify_topics(text: str, *, url: str | None = None) -> list[str]:
+    """Return 1–3 ranked topics from TOPIC_LIST (primary first)."""
     preview = text[:800].strip()
     if not preview:
-        return "General"
+        hint = topic_hint_from_url(url or "")
+        return [hint] if hint else ["General"]
 
     prompt = _TOPIC_PROMPT.format(topics=", ".join(TOPIC_LIST), preview=preview)
     try:
-        raw = (
-            await generate_with_retry(DEFAULT_GEMINI_MODEL, prompt, max_output_tokens=32)
-        ).strip().strip('"').strip("'")
-        options = {t.lower(): t for t in TOPIC_LIST}
-        return options.get(raw.lower(), "General")
+        raw = await generate_with_retry(DEFAULT_GEMINI_MODEL, prompt, max_output_tokens=64)
+        parsed = json.loads(strip_json_markdown(raw))
+        if isinstance(parsed, dict):
+            parsed = parsed.get("topics") or parsed.get("labels") or []
+        if isinstance(parsed, str):
+            parsed = [parsed]
+        if not isinstance(parsed, list):
+            parsed = []
+        topics = normalize_topics([str(x) for x in parsed])
     except Exception as e:
-        logger.warning("classify_topic failed: %s", e)
-        return "General"
+        logger.warning("classify_topics failed: %s", e)
+        topics = ["General"]
+
+    # Known publishers beat weak/generic labels (e.g. model says "News" → Culture).
+    hint = topic_hint_from_url(url or text)
+    if hint and topics[0] in {"General", "Culture"}:
+        return normalize_topics([hint, *[t for t in topics if t != hint]])
+    return topics
+
+
+async def classify_topic(text: str) -> str:
+    """Primary topic only (compat wrapper)."""
+    return (await classify_topics(text))[0]
 
 
 _RICH_PROMPT = """\
@@ -149,6 +286,7 @@ class ProcessedItem:
     topic: str
     summary: str
     key_ideas: list[str] = field(default_factory=list)
+    topics: list[str] = field(default_factory=list)
 
 
 async def process_url(raw: str) -> ProcessedItem:
@@ -160,7 +298,8 @@ async def process_url(raw: str) -> ProcessedItem:
         extracted = await _extract_link(raw)
 
     text_for_topic = extracted[:2000] or raw
-    topic = await classify_topic(text_for_topic)
+    topics = await classify_topics(text_for_topic, url=raw)
+    topic = topics[0]
 
     if extracted:
         summary, key_ideas = await _gemini_rich(extracted)
@@ -171,6 +310,7 @@ async def process_url(raw: str) -> ProcessedItem:
         input_type=input_type,
         extracted_text=extracted[:8000],
         topic=topic,
+        topics=topics,
         summary=summary,
         key_ideas=key_ideas,
     )
@@ -183,6 +323,7 @@ async def process_note(text: str) -> ProcessedItem:
         input_type="note",
         extracted_text=text,
         topic=enriched["topic"],
+        topics=enriched["topics"],
         summary=enriched["summary"],
         key_ideas=enriched["key_ideas"],
     )
@@ -210,20 +351,27 @@ async def enrich_note(
     text: str,
     *,
     current_topic: str | None = None,
+    current_topics: list[str] | None = None,
     allow_topic_update: bool = True,
 ) -> dict:
     """
-    Classify topic + optional light polish for notes.
+    Classify topics + optional light polish for notes.
 
-    If allow_topic_update is False (user already set a folder), keep current_topic.
-    Topic is only replaced when current is missing/Inbox/General placeholder.
+    If allow_topic_update is False (user already set a folder), keep current_topic/topics.
+    Topics are only replaced when current primary is missing/Inbox/General placeholder.
     """
     body = text.strip()
-    topic = current_topic or "Inbox"
-
     if allow_topic_update:
-        classified = await classify_topic(body) if body else "General"
-        topic = classified
+        topics = await classify_topics(body) if body else ["General"]
+        topic = topics[0]
+    else:
+        topic = current_topic or "Inbox"
+        topics = normalize_topics(
+            current_topics or ([topic] if topic else None),
+            fallback=topic or "Inbox",
+        )
+        if topic and topics[0] != topic:
+            topics = normalize_topics([topic, *[t for t in topics if t != topic]])
 
     summary = ""
     key_ideas: list[str] = []
@@ -237,7 +385,7 @@ async def enrich_note(
         except Exception as e:
             logger.warning("enrich_note polish failed: %s", e)
 
-    return {"topic": topic, "summary": summary, "key_ideas": key_ideas}
+    return {"topic": topic, "topics": topics, "summary": summary, "key_ideas": key_ideas}
 
 
 def topic_is_default(topic: str | None) -> bool:
@@ -248,5 +396,12 @@ def topic_is_default(topic: str | None) -> bool:
 
 
 async def process_image(description: str) -> ProcessedItem:
-    topic = await classify_topic(description)
-    return ProcessedItem(input_type="image", extracted_text=description, topic=topic, summary="", key_ideas=[])
+    topics = await classify_topics(description)
+    return ProcessedItem(
+        input_type="image",
+        extracted_text=description,
+        topic=topics[0],
+        topics=topics,
+        summary="",
+        key_ideas=[],
+    )
