@@ -9,6 +9,11 @@ import { useDominoAuth } from '@/features/domino/domino-auth-context';
 import { dominoApi, type DominoItem } from '@/features/domino/domino-api';
 import { toBookmark, cardColor, faviconLetter, urlToDisplayTitle, timeAgo, type Bookmark } from '@/features/domino/domino-utils';
 import { DominoLogo } from '@/features/domino/domino-logo';
+import {
+  DominoOnboardingSheet,
+  isOnboardingDone,
+  markOnboardingDone,
+} from '@/features/domino/domino-onboarding';
 import { IcSearch, IcSort, IcX, IcStar, IcPin, IcShare, IcExt, IcPlus, IcClipboard, KindIcon } from '@/features/domino/domino-icons';
 
 function useMagicLink(loginWithToken: (t: string) => Promise<void>) {
@@ -41,9 +46,23 @@ function BookmarkCard({ item, onStar, onPin, onDelete, onOpen }: {
           <span style={{ fontSize: 'var(--dn-text-sm)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 6, background: 'oklch(1 0 0 / 0.7)', color: 'var(--ink-2)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <KindIcon kind={item.kind} /> {item.kind}
           </span>
-          {item.categories[0] && (
-            <span style={{ fontSize: 'var(--dn-text-sm)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 6, background: 'oklch(0 0 0 / 0.05)', color: 'var(--ink-2)' }}>{item.categories[0]}</span>
-          )}
+          {item.categories.map((cat, idx) => (
+            <span
+              key={`${cat}-${idx}`}
+              style={{
+                fontSize: 'var(--dn-text-sm)',
+                fontWeight: 600,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                padding: '3px 8px',
+                borderRadius: 6,
+                background: idx === 0 ? 'oklch(0 0 0 / 0.05)' : 'oklch(0 0 0 / 0.03)',
+                color: idx === 0 ? 'var(--ink-2)' : 'var(--ink-3)',
+              }}
+            >
+              {cat}
+            </span>
+          ))}
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
           <button className={`dn-icon-btn${item.starred ? ' starred' : ''}`} onClick={(e) => { e.stopPropagation(); setPop(true); setTimeout(() => setPop(false), 280); onStar(item.id); }} aria-label="Star">
@@ -156,7 +175,23 @@ function DetailSheet({ item, onClose }: { item: Bookmark; onClose: () => void })
         <div style={{ borderRadius: 18, padding: 18, background: cardColor(item.color), marginBottom: 16 }}>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 14 }}>
             <span style={{ fontSize: 'var(--dn-text-sm)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 6, background: 'oklch(1 0 0 / 0.7)', color: 'var(--ink-2)', display: 'inline-flex', alignItems: 'center', gap: 4 }}><KindIcon kind={item.kind} /> {item.kind}</span>
-            {item.categories[0] && <span style={{ fontSize: 'var(--dn-text-sm)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 6, background: 'oklch(0 0 0 / 0.06)', color: 'var(--ink-2)' }}>{item.categories[0]}</span>}
+            {item.categories.map((cat, idx) => (
+              <span
+                key={`${cat}-${idx}`}
+                style={{
+                  fontSize: 'var(--dn-text-sm)',
+                  fontWeight: 600,
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                  padding: '3px 8px',
+                  borderRadius: 6,
+                  background: idx === 0 ? 'oklch(0 0 0 / 0.06)' : 'oklch(0 0 0 / 0.03)',
+                  color: idx === 0 ? 'var(--ink-2)' : 'var(--ink-3)',
+                }}
+              >
+                {cat}
+              </span>
+            ))}
             <div style={{ flex: 1 }} />
             <span style={{ fontSize: 'var(--dn-text-sm)', color: 'var(--ink-4)' }}>{timeAgo(item.days)}</span>
           </div>
@@ -200,13 +235,32 @@ function SavedView() {
   const [sortOpen, setSortOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [detail, setDetail] = useState<Bookmark | null>(null);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [profileEmail, setProfileEmail] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    try { setRawItems(await dominoApi.getItems(token, 500, 0)); }
-    finally { setLoading(false); }
+    try {
+      const [items, me] = await Promise.all([
+        dominoApi.getItems(token, 500, 0),
+        dominoApi.getMe(token).catch(() => null),
+      ]);
+      setRawItems(items);
+      const email = me?.email ?? null;
+      setProfileEmail(email);
+      if (!isOnboardingDone()) {
+        if (items.length > 0 && email) markOnboardingDone();
+        else setOnboardingOpen(true);
+      }
+    } finally {
+      setLoading(false);
+    }
   }, [token]);
 
   useEffect(() => { load(); }, [load]);
+
+  const completeOnboarding = useCallback(() => {
+    setOnboardingOpen(false);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -323,7 +377,11 @@ function SavedView() {
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 24px', textAlign: 'center', color: 'var(--ink-3)' }}>
             <div style={{ width: 64, height: 64, borderRadius: 18, background: 'var(--bg-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-3)', border: '1px dashed var(--hairline)' }}><IcSearch size={24} /></div>
             <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 22, margin: '12px 0 6px', color: 'var(--ink)' }}>Nothing here yet</h3>
-            <p style={{ fontSize: 'var(--dn-text-base)', margin: 0, maxWidth: 240, lineHeight: 1.5 }}>{query ? 'Try a different search.' : 'Save your first link with the + button.'}</p>
+            <p style={{ fontSize: 'var(--dn-text-base)', margin: 0, maxWidth: 260, lineHeight: 1.5 }}>
+              {query
+                ? 'Try a different search.'
+                : 'Save a link or note with the + button — or text it over iMessage.'}
+            </p>
           </div>
         ) : (
           <div className="dn-masonry">
@@ -335,8 +393,27 @@ function SavedView() {
       </div>
 
       <button className="dn-fab" onClick={() => setAddOpen(true)} aria-label="Add"><IcPlus size={22} /></button>
-      {addOpen && <AddSheet token={token} onClose={() => setAddOpen(false)} onAdd={(item) => { setRawItems(prev => [item, ...prev]); setAddOpen(false); }} />}
       {detail && <DetailSheet item={detail} onClose={() => setDetail(null)} />}
+      {onboardingOpen && !loading && (
+        <DominoOnboardingSheet
+          token={token}
+          hasItems={rawItems.length > 0}
+          hasEmail={Boolean(profileEmail)}
+          initialEmail={profileEmail}
+          onComplete={completeOnboarding}
+          onEmailSaved={(email) => setProfileEmail(email)}
+        />
+      )}
+      {addOpen && (
+        <AddSheet
+          token={token}
+          onClose={() => setAddOpen(false)}
+          onAdd={(item) => {
+            setRawItems((prev) => [item, ...prev]);
+            setAddOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

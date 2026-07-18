@@ -13,6 +13,9 @@ targets:
   Domino:
     type: application
     platform: iOS
+    configFiles:
+      Release: Config/Domino.Release.xcconfig
+      Debug: Config/Debug.xcconfig
     sources:
       - path: Domino
     settings:
@@ -22,7 +25,7 @@ targets:
       CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: "YES"
       ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       TARGETED_DEVICE_FAMILY: "1,2"
-      CURRENT_PROJECT_VERSION: 1
+      CURRENT_PROJECT_VERSION: 3
       MARKETING_VERSION: 1.0
     entitlements:
       path: Domino/Resources/Domino.entitlements
@@ -30,8 +33,8 @@ targets:
         com.apple.developer.associated-domains:
           - applinks:domino.fyi
           - applinks:www.domino.fyi
-        com.apple.security.application-groups:
-          - group.fyi.domino.app
+        # App Group identifier must exist in the Developer portal before enabling
+        # com.apple.security.application-groups. Session sharing uses Keychain only.
         keychain-access-groups:
           - $(AppIdentifierPrefix)group.fyi.domino.app
     dependencies:
@@ -41,7 +44,10 @@ targets:
       path: Domino/Resources/Info.plist
       properties:
         CFBundleDisplayName: domino
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         ITSAppUsesNonExemptEncryption: false
+        UIRequiresFullScreen: true
         UILaunchScreen:
           UIColorName: systemBackgroundColor
         CFBundleURLTypes:
@@ -58,6 +64,9 @@ targets:
   DominoShare:
     type: app-extension
     platform: iOS
+    configFiles:
+      Release: Config/DominoShare.Release.xcconfig
+      Debug: Config/Debug.xcconfig
     sources:
       - path: DominoShare
       - path: Domino/Core
@@ -70,13 +79,11 @@ targets:
       CODE_SIGN_ENTITLEMENTS: DominoShare/DominoShare.entitlements
       CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: "YES"
       SKIP_INSTALL: YES
-      CURRENT_PROJECT_VERSION: 1
+      CURRENT_PROJECT_VERSION: 3
       MARKETING_VERSION: 1.0
     entitlements:
       path: DominoShare/DominoShare.entitlements
       properties:
-        com.apple.security.application-groups:
-          - group.fyi.domino.app
         keychain-access-groups:
           - $(AppIdentifierPrefix)group.fyi.domino.app
 

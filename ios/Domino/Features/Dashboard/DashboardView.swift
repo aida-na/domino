@@ -20,14 +20,13 @@ struct DashboardView: View {
     @State private var showNoteEditor = false
     @State private var editingItem: Item?
     @State private var selectedBookmark: Bookmark?
+    @State private var showOnboarding = false
+    @State private var profileEmail: String?
 
     private let api = DominoAPI()
 
     private var folders: [String] {
-        let topics = items.map { item -> String in
-            let t = item.topic?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            return t.isEmpty ? "Inbox" : t
-        }
+        let topics = items.flatMap(\.resolvedTopics)
         return Array(Set(topics)).sorted {
             $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
         }
@@ -127,6 +126,18 @@ struct DashboardView: View {
                 }
                 .padding(.trailing, 22)
                 .padding(.bottom, 22)
+
+                if showOnboarding {
+                    OnboardingView(
+                        hasItems: !items.isEmpty,
+                        hasEmail: !(profileEmail ?? "").isEmpty,
+                        initialEmail: profileEmail,
+                        onComplete: { showOnboarding = false },
+                        onEmailSaved: { profileEmail = $0 }
+                    )
+                    .transition(.opacity)
+                    .zIndex(100)
+                }
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
@@ -335,7 +346,7 @@ struct DashboardView: View {
         if !search.isEmpty { return "try a different search." }
         if mediaFilter != nil { return "nothing saved here yet." }
         if folderFilter != nil { return "no notes in this folder yet." }
-        return "tap + to jot a note before it slips away."
+        return "send a link over iMessage — or tap + to jot a note."
     }
 
     private func openItem(_ bookmark: Bookmark) {
@@ -365,10 +376,24 @@ struct DashboardView: View {
         errorMessage = nil
         do {
             items = try await api.getItems(token: token, limit: 500)
+            if let profile = try? await api.getMe(token: token) {
+                profileEmail = profile.email
+            }
+            evaluateOnboarding()
         } catch {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    private func evaluateOnboarding() {
+        guard !OnboardingStore.isDone else { return }
+        let hasEmail = !(profileEmail ?? "").isEmpty
+        if !items.isEmpty && hasEmail {
+            OnboardingStore.markDone()
+            return
+        }
+        showOnboarding = true
     }
 
     private func toggleStar(_ bookmark: Bookmark) async {

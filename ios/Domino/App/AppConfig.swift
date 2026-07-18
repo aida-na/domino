@@ -6,6 +6,13 @@ enum AppConfig {
     static let sessionAccount = "domino_session"
     static let phoneAccount = "domino_phone"
     static let appGroupID = "group.fyi.domino.app"
+    /// Public Domino iMessage number — opens Messages via `sms:`.
+    static let imessagePhone = "+17868250042"
+    static let onboardingDefaultsKey = "domino_onboarding_v1"
+
+    static var imessageURL: URL? {
+        URL(string: "sms:\(imessagePhone)")
+    }
 
     /// Shared between app + share extension via Keychain access group.
     /// Format: `<TeamID>.group.fyi.domino.app`

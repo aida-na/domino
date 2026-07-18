@@ -52,6 +52,7 @@
 		DA20C75E9888AD6E376D2DCC /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72DB6D9A546F061A8426BFCA /* APIClient.swift */; };
 		DBF3EAB290CACEB0E09740F7 /* BookmarkMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9CD20FA3918931C000216F2 /* BookmarkMapper.swift */; };
 		E0B9C723860E098D06CF987A /* ChatModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D193BA112D4755AF07DBD94 /* ChatModels.swift */; };
+		E0DF0AF6FCDA4C42CB4EC7D9 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EEF2E77F72EEA71786EE2DB /* OnboardingView.swift */; };
 		E13348D5B3D3D2550024A455 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A69BFA48E3FDA73724F96B73 /* UserProfile.swift */; };
 		E21CDF87BAB5161CEDC1CC3F /* Newsreader-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 9FBD26114C2BAFBB8D89320C /* Newsreader-Variable.ttf */; };
 		E286C95D48FB3092541FDAAD /* DominoColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F2EA43E7161E67B6F45130E /* DominoColors.swift */; };
@@ -111,6 +112,7 @@
 		374A005B2F05D74D5FA940D9 /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIError.swift; sourceTree = "<group>"; };
 		3DE1124A3A6310A9494E01B7 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
 		3E5594805D773C3D0A587BF1 /* DominoShare.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = DominoShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		3EEF2E77F72EEA71786EE2DB /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		4BA27BCE292D668362F9E71D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		50AA45EAB0736F43AF98876B /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		5D193BA112D4755AF07DBD94 /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
@@ -122,12 +124,14 @@
 		72DB6D9A546F061A8426BFCA /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		760DDD8A0A0EE3177CCED0AC /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		79E65BEF2A4B37F5FA84AE92 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		7BD8DA1E535CC30A34C78FB8 /* DominoShare.Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = DominoShare.Release.xcconfig; sourceTree = "<group>"; };
 		80A2D30BAAD9732322319D09 /* Domino.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Domino.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		84E4E535BDC4178C1166C50C /* ItemCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemCardView.swift; sourceTree = "<group>"; };
 		9A9282F1ADBAA7BB4187BD5B /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		9FBD26114C2BAFBB8D89320C /* Newsreader-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Newsreader-Variable.ttf"; sourceTree = "<group>"; };
 		A69BFA48E3FDA73724F96B73 /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
 		A8C9164B1F9925D79B01E29F /* DominoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DominoApp.swift; sourceTree = "<group>"; };
+		AA75CA9CF38B010EDE86ACB8 /* Domino.Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Domino.Release.xcconfig; sourceTree = "<group>"; };
 		AB9FCEC1559643AF482BF406 /* AuthTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthTokens.swift; sourceTree = "<group>"; };
 		B1DB7382A27B47BCCC306CF8 /* AuthenticatedAsyncImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticatedAsyncImage.swift; sourceTree = "<group>"; };
 		B2BFB9DD4EFF038C60871291 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -310,6 +314,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		8CE167790593A17DF7ED5571 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				3EEF2E77F72EEA71786EE2DB /* OnboardingView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
 		8EDF30636C63FA9FC8F3F054 /* Me */ = {
 			isa = PBXGroup;
 			children = (
@@ -322,6 +334,8 @@
 			isa = PBXGroup;
 			children = (
 				9A9282F1ADBAA7BB4187BD5B /* Debug.xcconfig */,
+				AA75CA9CF38B010EDE86ACB8 /* Domino.Release.xcconfig */,
+				7BD8DA1E535CC30A34C78FB8 /* DominoShare.Release.xcconfig */,
 				DC98FBB3C09241EC0EAACB2E /* Release.xcconfig */,
 			);
 			path = Config;
@@ -338,6 +352,7 @@
 				503E52CB02107175F00B268B /* Main */,
 				774BD24082BC7DB0278D0D10 /* Map */,
 				8EDF30636C63FA9FC8F3F054 /* Me */,
+				8CE167790593A17DF7ED5571 /* Onboarding */,
 				4B0050F6651FCED53F3DEA74 /* Search */,
 			);
 			path = Features;
@@ -549,6 +564,7 @@
 				782D88CBFC987CC999976BB1 /* MainTabView.swift in Sources */,
 				7E1752E133D01638A325A199 /* MapView.swift in Sources */,
 				3804981AACF1E7061C977FE0 /* NoteEditorView.swift in Sources */,
+				E0DF0AF6FCDA4C42CB4EC7D9 /* OnboardingView.swift in Sources */,
 				CF8F592E72C6CAEF152535FC /* PhoneNormalizer.swift in Sources */,
 				963BB6F6EC6B02ED0EF11B31 /* ProfileView.swift in Sources */,
 				9D1A9286B3A9CE93F04FBB48 /* SearchView.swift in Sources */,
@@ -625,12 +641,13 @@
 		};
 		3982F6031B906867DDB18B12 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9A9282F1ADBAA7BB4187BD5B /* Debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
 				CODE_SIGN_ENTITLEMENTS = Domino/Resources/Domino.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				INFOPLIST_FILE = Domino/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -766,10 +783,11 @@
 		};
 		A0FD33FB46A4C0428A9495BB /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9A9282F1ADBAA7BB4187BD5B /* Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
 				CODE_SIGN_ENTITLEMENTS = DominoShare/DominoShare.entitlements;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				INFOPLIST_FILE = DominoShare/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -805,10 +823,11 @@
 		};
 		CA4CD86F75A590528BA432B7 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7BD8DA1E535CC30A34C78FB8 /* DominoShare.Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
 				CODE_SIGN_ENTITLEMENTS = DominoShare/DominoShare.entitlements;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				INFOPLIST_FILE = DominoShare/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -825,12 +844,12 @@
 		};
 		DA6C0EFBA8EF3DCFA4499FE8 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = AA75CA9CF38B010EDE86ACB8 /* Domino.Release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
 				CODE_SIGN_ENTITLEMENTS = Domino/Resources/Domino.entitlements;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				INFOPLIST_FILE = Domino/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
