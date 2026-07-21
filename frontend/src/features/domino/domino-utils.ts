@@ -45,6 +45,7 @@ export function urlToDisplayTitle(url: string | null, domain: string | null): st
 }
 
 export function timeAgo(days: number): string {
+  if (days < 0) return '';
   if (days < 1) return 'today';
   if (days < 2) return '1d ago';
   if (days < 7) return `${days}d ago`;
@@ -62,8 +63,14 @@ function extractDomain(url: string): string | null {
 }
 
 function daysSince(iso: string | null): number {
-  if (!iso) return 0;
-  return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000));
+  if (!iso) return -1;
+  const saved = new Date(iso);
+  if (Number.isNaN(saved.getTime())) return -1;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const savedDay = new Date(saved);
+  savedDay.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.floor((today.getTime() - savedDay.getTime()) / 86400000));
 }
 
 function extractTitle(item: DominoItem): string | null {
@@ -82,7 +89,13 @@ export function toBookmark(item: DominoItem): Bookmark {
   const isLink = item.input_type === 'link';
   const isNote = item.input_type === 'note';
   const domain = isLink ? extractDomain(item.raw_input) : null;
-  const topic = item.topic || 'Inbox';
+  const topics = (item.topics?.length
+    ? item.topics
+    : item.topic
+      ? [item.topic]
+      : ['Inbox']
+  ).filter(Boolean);
+  const topic = topics[0] || 'Inbox';
 
   return {
     id: item.id,
@@ -91,7 +104,7 @@ export function toBookmark(item: DominoItem): Bookmark {
     url: isLink ? item.raw_input : null,
     domain,
     color: hashColor(topic),
-    categories: [topic],
+    categories: topics,
     snippet: isNote
       ? item.raw_input.slice(0, 280)
       : (item.summary?.slice(0, 200) ?? null),

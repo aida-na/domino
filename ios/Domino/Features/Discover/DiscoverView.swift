@@ -17,9 +17,13 @@ struct DiscoverView: View {
     }
 
     private var topics: [(String, Int)] {
-        Dictionary(grouping: items.compactMap { $0.topic }, by: { $0 })
-            .map { ($0.key, $0.value.count) }
-            .sorted { $0.1 > $1.1 }
+        var counts: [String: Int] = [:]
+        for item in items {
+            for label in item.resolvedTopics {
+                counts[label, default: 0] += 1
+            }
+        }
+        return counts.map { ($0.key, $0.value) }.sorted { $0.1 > $1.1 }
     }
 
     private var thisWeek: [Bookmark] {

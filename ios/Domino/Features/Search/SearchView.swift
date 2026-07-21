@@ -13,9 +13,7 @@ struct SearchView: View {
     private let api = DominoAPI()
 
     private var recentChips: [String] {
-        let words = items
-            .compactMap(\.topic)
-            .filter { !$0.isEmpty }
+        let words = items.flatMap(\.resolvedTopics).filter { !$0.isEmpty }
         return Array(Set(words)).sorted().prefix(6).map { $0.lowercased() }
     }
 
@@ -33,7 +31,7 @@ struct SearchView: View {
     }
 
     private var folders: [String] {
-        Array(Set(items.compactMap(\.topic).filter { !$0.isEmpty })).sorted()
+        Array(Set(items.flatMap(\.resolvedTopics).filter { !$0.isEmpty })).sorted()
     }
 
     var body: some View {

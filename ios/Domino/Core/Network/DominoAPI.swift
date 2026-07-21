@@ -50,6 +50,19 @@ struct DominoAPI {
         let _: LogoutResponse = try await client.request("POST", path: "auth/logout", token: token)
     }
 
+    func exportAccount(token: String) async throws -> Data {
+        try await client.requestData("GET", path: "auth/me/export", token: token)
+    }
+
+    func deleteAccount(token: String, password: String? = nil) async throws -> DeleteAccountResponse {
+        try await client.request(
+            "POST",
+            path: "auth/me/delete",
+            token: token,
+            body: DeleteAccountRequest(confirm: "delete", password: password)
+        )
+    }
+
     // MARK: - Items
 
     func getItems(token: String, limit: Int = 100, offset: Int = 0) async throws -> [Item] {

@@ -1,7 +1,10 @@
 name: Deploy Backend (Production)
 
-# Deploys the API that iOS / production web hit:
+# Deploys the API that iOS Release / production web hit:
 # https://domino-414681726671.us-central1.run.app
+#
+# Secrets (DATABASE_URL, GEMINI_API_KEY, etc.) must be configured on the
+# Cloud Run service — use backend/scripts/setup-gcp-secrets.sh --bind
 on:
   workflow_dispatch:
   push:
@@ -14,16 +17,27 @@ on:
 jobs:
   deploy-backend:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
 
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
 
       - name: Deploy to Google Cloud Run (Production)
         uses: google-github-actions/deploy-cloudrun@v2
@@ -33,4 +47,5 @@ jobs:
           source: ./backend
           env_vars: |
             ENVIRONMENT=production
+            DEBUG=false
             RUN_STARTUP_SCHEMA=true

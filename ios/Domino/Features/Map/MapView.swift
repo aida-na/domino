@@ -186,8 +186,12 @@ private struct MapCanvasView: View {
     @State private var nodeDelta: [String: CGSize] = [:]
     @State private var scale: CGFloat = 0.55
     @State private var cam: CGSize = CGSize(width: -100, height: 20)
-    @GestureState private var panDelta: CGSize = .zero
-    @GestureState private var magnifyDelta: CGFloat = 1
+
+    /// Pan/pinch origins — write `cam`/`scale` continuously so GestureState
+    /// reset can't flash a frame of the pre-gesture camera.
+    @State private var panOrigin: CGSize?
+    @State private var pinchBaseScale: CGFloat?
+    @State private var pinchBaseCam: CGSize?
 
     /// Set while dragging a hub or node so background pan doesn't steal the gesture.
     @State private var itemDragID: String?
@@ -255,19 +259,16 @@ private struct MapCanvasView: View {
         return out
     }
 
-    private var liveScale: CGFloat { min(3.0, max(0.25, scale * magnifyDelta)) }
-    private var liveCam: CGSize {
-        CGSize(width: cam.width + panDelta.width, height: cam.height + panDelta.height)
-    }
-
     var body: some View {
         ZStack {
             MapDotGridBackground()
                 .allowsHitTesting(false)
 
             canvasLayer
-                .scaleEffect(liveScale, anchor: .topLeading)
-                .offset(liveCam)
+                .drawingGroup()
+                .scaleEffect(scale, anchor: .topLeading)
+                .offset(cam)
+                .transaction { $0.animation = nil }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
@@ -406,27 +407,42 @@ private struct MapCanvasView: View {
 
     private var viewportPanGesture: some Gesture {
         DragGesture(minimumDistance: 1)
-            .updating($panDelta) { value, state, _ in
+            .onChanged { value in
                 guard itemDragID == nil else { return }
-                state = value.translation
-            }
-            .onEnded { value in
-                guard itemDragID == nil else { return }
+                if panOrigin == nil { panOrigin = cam }
+                let origin = panOrigin ?? cam
                 cam = CGSize(
-                    width: cam.width + value.translation.width,
-                    height: cam.height + value.translation.height
+                    width: origin.width + value.translation.width,
+                    height: origin.height + value.translation.height
                 )
+            }
+            .onEnded { _ in
+                panOrigin = nil
             }
     }
 
     private var viewportPinchGesture: some Gesture {
         MagnificationGesture()
-            .updating($magnifyDelta) { value, state, _ in
-                state = value
+            .onChanged { value in
+                if pinchBaseScale == nil {
+                    pinchBaseScale = scale
+                    pinchBaseCam = cam
+                }
+                let baseScale = pinchBaseScale ?? scale
+                let baseCam = pinchBaseCam ?? cam
+                let next = min(3.0, max(0.25, baseScale * value))
+                let center = CGPoint(x: viewportSize.width / 2, y: viewportSize.height / 2)
+                let canvasX = (center.x - baseCam.width) / baseScale
+                let canvasY = (center.y - baseCam.height) / baseScale
+                scale = next
+                cam = CGSize(
+                    width: center.x - canvasX * next,
+                    height: center.y - canvasY * next
+                )
             }
-            .onEnded { value in
-                let next = min(3.0, max(0.25, scale * value))
-                zoom(to: next)
+            .onEnded { _ in
+                pinchBaseScale = nil
+                pinchBaseCam = nil
             }
     }
 
@@ -440,8 +456,8 @@ private struct MapCanvasView: View {
                 guard itemDragID == "hub:\(cat)" else { return }
                 let start = hubDragStart[cat] ?? .zero
                 hubDelta[cat] = CGSize(
-                    width: start.width + value.translation.width / liveScale,
-                    height: start.height + value.translation.height / liveScale
+                    width: start.width + value.translation.width / scale,
+                    height: start.height + value.translation.height / scale
                 )
             }
             .onEnded { _ in
@@ -464,8 +480,8 @@ private struct MapCanvasView: View {
                 guard itemDragID == "node:\(bookmark.id)" else { return }
                 let start = nodeDragStart[bookmark.id] ?? .zero
                 nodeDelta[bookmark.id] = CGSize(
-                    width: start.width + value.translation.width / liveScale,
-                    height: start.height + value.translation.height / liveScale
+                    width: start.width + value.translation.width / scale,
+                    height: start.height + value.translation.height / scale
                 )
             }
             .onEnded { value in

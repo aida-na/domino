@@ -61,3 +61,12 @@ struct SetPasswordRequest: Encodable {
         case passwordConfirm = "password_confirm"
     }
 }
+
+struct DeleteAccountRequest: Encodable {
+    let confirm: String
+    var password: String? = nil
+}
+
+struct DeleteAccountResponse: Codable {
+    let success: Bool
+}

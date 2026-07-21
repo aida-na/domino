@@ -20,12 +20,15 @@ function DiscoverContent() {
     }).catch(console.error).finally(() => setFetching(false));
   }, [sessionToken]);
 
-  // My collections: group by topic, sorted by count
+  // My collections: group by every label (main + secondary), sorted by count
   const collections = useMemo(() => {
     const map: Record<string, Bookmark[]> = {};
     items.forEach(it => {
-      const cat = it.categories[0] || 'Inbox';
-      (map[cat] = map[cat] || []).push(it);
+      const cats = it.categories?.length ? it.categories : ['Inbox'];
+      cats.forEach(cat => {
+        const list = (map[cat] = map[cat] || []);
+        if (!list.some(x => x.id === it.id)) list.push(it);
+      });
     });
     return Object.entries(map)
       .map(([title, list]) => ({ title, count: list.length, color: list[0].color }))

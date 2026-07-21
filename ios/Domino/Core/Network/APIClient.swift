@@ -64,6 +64,28 @@ final class APIClient {
         }
     }
 
+    func requestData(
+        _ method: String,
+        path: String,
+        token: String? = nil,
+        query: [String: String] = [:]
+    ) async throws -> Data {
+        let url = try buildURL(path: path, query: query)
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        if let token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError(message: "Invalid response")
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            throw APIError.fromResponse(data: data, statusCode: http.statusCode)
+        }
+        return data
+    }
+
     private func buildURL(path: String, query: [String: String]) throws -> URL {
         var url = baseURL
         for component in path.split(separator: "/") {

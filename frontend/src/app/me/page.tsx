@@ -309,30 +309,36 @@ function MeContent() {
   }
 
   function exportJson() {
-    const payload = {
-      exported_at: new Date().toISOString(),
-      phone,
-      items: items.map((i) => ({
-        id: i.id,
-        kind: i.kind,
-        title: i.title,
-        url: i.url,
-        categories: i.categories,
-        snippet: i.snippet,
-        starred: i.starred,
-        pinned: i.pinned,
-        days_ago: i.days,
-      })),
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `domino-export-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('export downloaded');
-    setSheet(null);
+    if (!sessionToken) return;
+    dominoApi.exportAccount(sessionToken).then((payload) => {
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `domino-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('export downloaded');
+      setSheet(null);
+    }).catch(() => showToast('export failed'));
+  }
+
+  async function deleteAccount() {
+    if (!sessionToken) return;
+    const typed = window.prompt("type 'delete' to permanently delete your account and all saves");
+    if (typed?.trim().toLowerCase() !== 'delete') return;
+    let password: string | undefined;
+    if (hasPassword) {
+      password = window.prompt('enter your password to confirm') ?? undefined;
+      if (!password) return;
+    }
+    try {
+      await dominoApi.deleteAccount(sessionToken, password);
+      showToast('account deleted');
+      await logout();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'delete failed');
+    }
   }
 
   const rows: {
@@ -576,10 +582,25 @@ function MeContent() {
               style={{ height: 44, justifyContent: 'center', width: '100%' }}
               onClick={exportJson}
             >
-              download my saves (json)
+              download my data (json)
+            </button>
+            <button
+              type="button"
+              style={{
+                height: 44, width: '100%', borderRadius: 12,
+                border: '1px solid oklch(0.88 0.08 27)',
+                background: 'transparent',
+                color: 'oklch(0.55 0.18 27)',
+                fontSize: 'var(--dn-text-base)', fontWeight: 500,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}
+              onClick={() => { void deleteAccount(); }}
+            >
+              delete account
             </button>
             <p style={{ fontSize: 'var(--dn-text-sm)', color: 'var(--ink-4)', margin: '6px 0 0', lineHeight: 1.45 }}>
               your invite links friends to sign up with your referral code.
+              deleting your account removes all saves permanently.
             </p>
           </div>
         </SheetShell>

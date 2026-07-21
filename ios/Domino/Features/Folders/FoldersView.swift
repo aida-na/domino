@@ -9,8 +9,13 @@ struct FoldersView: View {
     private let api = DominoAPI()
 
     private var folders: [(name: String, count: Int)] {
-        Dictionary(grouping: items.compactMap(\.topic).filter { !$0.isEmpty }, by: { $0 })
-            .map { (name: $0.key, count: $0.value.count) }
+        var counts: [String: Int] = [:]
+        for item in items {
+            for label in item.resolvedTopics where !label.isEmpty {
+                counts[label, default: 0] += 1
+            }
+        }
+        return counts.map { (name: $0.key, count: $0.value) }
             .sorted { $0.count > $1.count }
     }
 

@@ -24,11 +24,12 @@ struct ProfileView: View {
     @State private var showEdit = false
     @State private var showInvite = false
     @State private var showExport = false
+    @State private var showDeleteAccount = false
 
     private let api = DominoAPI()
 
     private var starredCount: Int { items.filter(\.isFavorited).count }
-    private var topicCount: Int { Set(items.compactMap(\.topic)).count }
+    private var topicCount: Int { Set(items.flatMap(\.resolvedTopics)).count }
     private var thisWeekCount: Int {
         items.map(BookmarkMapper.toBookmark).filter { $0.days <= 7 }.count
     }
@@ -45,6 +46,7 @@ struct ProfileView: View {
                     actionButtons
                     statsGrid
                     signOutButton
+                    deleteAccountButton
                     Text("domino · made with care")
                         .font(.dominoBody(12))
                         .foregroundStyle(DominoColors.ink4)
@@ -76,7 +78,10 @@ struct ProfileView: View {
                 InviteShareSheet(inviteURL: auth.profile?.inviteURL)
             }
             .sheet(isPresented: $showExport) {
-                ExportSavesSheet(items: items, phone: auth.phone)
+                ExportSavesSheet(token: auth.sessionToken)
+            }
+            .sheet(isPresented: $showDeleteAccount) {
+                DeleteAccountSheet()
             }
         }
     }
@@ -191,6 +196,19 @@ struct ProfileView: View {
         .background(DominoColors.paper)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(DominoColors.hairline))
+    }
+
+    private var deleteAccountButton: some View {
+        Button {
+            showDeleteAccount = true
+        } label: {
+            Text("delete account")
+                .fontWeight(.medium)
+                .foregroundStyle(Color.red.opacity(0.85))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+        }
+        .buttonStyle(.plain)
     }
 
     private func load() async {
@@ -399,29 +417,38 @@ struct InviteShareSheet: View {
 
 struct ExportSavesSheet: View {
     @Environment(\.dismiss) private var dismiss
-    let items: [Item]
-    let phone: String?
+    let token: String?
     @State private var notice: String?
+    @State private var isExporting = false
+
+    private let api = DominoAPI()
 
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 16) {
-                Text("\(items.count) saves ready to download as json.")
+                Text("download a json export of your profile and all saves.")
                     .font(.subheadline)
                     .foregroundStyle(DominoColors.ink3)
 
                 Button {
-                    exportJSON()
+                    Task { await exportJSON() }
                 } label: {
-                    Label("download json", systemImage: "square.and.arrow.down")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(DominoColors.accent)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                    Group {
+                        if isExporting {
+                            ProgressView().tint(.white)
+                        } else {
+                            Label("download json", systemImage: "square.and.arrow.down")
+                        }
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(DominoColors.accent)
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
                 }
                 .buttonStyle(.plain)
+                .disabled(isExporting || token == nil)
 
                 if let notice {
                     Text(notice)
@@ -443,34 +470,17 @@ struct ExportSavesSheet: View {
         .presentationDetents([.medium])
     }
 
-    private func exportJSON() {
-        let bookmarks = items.map(BookmarkMapper.toBookmark)
-        let payload: [String: Any] = [
-            "exported_at": ISO8601DateFormatter().string(from: Date()),
-            "phone": phone ?? "",
-            "items": bookmarks.map { b -> [String: Any] in
-                [
-                    "id": b.id,
-                    "kind": b.kind.rawValue,
-                    "title": b.title ?? "",
-                    "url": b.url ?? "",
-                    "categories": b.categories,
-                    "snippet": b.snippet ?? "",
-                    "starred": b.starred,
-                    "pinned": b.pinned,
-                    "days_ago": b.days,
-                ]
-            },
-        ]
-        guard JSONSerialization.isValidJSONObject(payload),
-              let data = try? JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys]) else {
-            notice = "couldn't export"
+    private func exportJSON() async {
+        guard let token else {
+            notice = "not signed in"
             return
         }
-
-        let name = "domino-export-\(ISO8601DateFormatter().string(from: Date()).prefix(10)).json"
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(String(name))
+        isExporting = true
+        defer { isExporting = false }
         do {
+            let data = try await api.exportAccount(token: token)
+            let name = "domino-export-\(ISO8601DateFormatter().string(from: Date()).prefix(10)).json"
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent(String(name))
             try data.write(to: url, options: .atomic)
             let av = UIActivityViewController(activityItems: [url], applicationActivities: nil)
             guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
@@ -483,6 +493,97 @@ struct ExportSavesSheet: View {
             notice = "export ready"
         } catch {
             notice = "couldn't export"
+        }
+    }
+}
+
+struct DeleteAccountSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(AuthSession.self) private var auth
+    @State private var confirmText = ""
+    @State private var password = ""
+    @State private var error: String?
+    @State private var isDeleting = false
+
+    private let api = DominoAPI()
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("this permanently deletes your account and all saves. this cannot be undone.")
+                    .font(.subheadline)
+                    .foregroundStyle(DominoColors.ink3)
+
+                TextField("type delete to confirm", text: $confirmText)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .padding(12)
+                    .background(DominoColors.paper)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(DominoColors.hairline))
+
+                if auth.profile?.hasPassword == true {
+                    SecureField("password", text: $password)
+                        .padding(12)
+                        .background(DominoColors.paper)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(DominoColors.hairline))
+                }
+
+                if let error {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+
+                Button(role: .destructive) {
+                    Task { await deleteAccount() }
+                } label: {
+                    Group {
+                        if isDeleting {
+                            ProgressView()
+                        } else {
+                            Text("delete my account").fontWeight(.semibold)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+                .background(Color.red.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .disabled(isDeleting || confirmText.lowercased() != "delete")
+
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("delete account")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    DominoCloseButton { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func deleteAccount() async {
+        guard confirmText.lowercased() == "delete", let token = auth.sessionToken else { return }
+        isDeleting = true
+        error = nil
+        defer { isDeleting = false }
+        do {
+            _ = try await api.deleteAccount(
+                token: token,
+                password: auth.profile?.hasPassword == true ? password : nil
+            )
+            await auth.logout()
+            dismiss()
+        } catch let apiError as APIError {
+            error = apiError.message
+        } catch {
+            error = "couldn't delete account"
         }
     }
 }

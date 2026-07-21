@@ -25,24 +25,41 @@ export default function DominoLandingPage() {
 
   if (isLoading) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-background bg-check-grid">
-        <span className="w-5 h-5 rounded-full border-2 border-[#ED4715] border-t-transparent animate-spin" />
+      <main className="min-h-screen flex items-center justify-center" style={{ background: '#E7E0D3' }}>
+        <span className="w-5 h-5 rounded-full border-2 border-[#B4520F] border-t-transparent animate-spin" />
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-background bg-check-grid text-[#1A1208] font-figtree lowercase overflow-x-hidden leading-snug relative flex flex-col">
-
+    <main
+      className="h-dvh lowercase overflow-hidden leading-snug relative flex flex-col"
+      style={{ background: '#E7E0D3', color: '#1C1917' }}
+    >
       <DominoHeroPoster />
 
-      <footer className="shrink-0 flex flex-col gap-2 px-4 py-3 border-t border-border/50 md:px-6 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <footer
+        className="shrink-0 flex flex-col gap-2 px-4 py-3 md:px-6"
+        style={{
+          background: '#E7E0D3',
+          borderTop: '1px solid rgba(28,25,23,.08)',
+          paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))',
+        }}
+      >
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">© 2026 daily labs</span>
+          <span className="text-xs" style={{ color: '#7A6F60' }}>
+            © 2026 daily labs
+          </span>
           <div className="flex items-center gap-4">
-            <Link href="/faq" className="text-xs text-muted-foreground hover:text-foreground transition-colors">faq</Link>
-            <Link href="/privacy" className="text-xs text-muted-foreground hover:text-foreground transition-colors">privacy</Link>
-            <Link href="/terms" className="text-xs text-muted-foreground hover:text-foreground transition-colors">terms</Link>
+            <Link href="/faq" className="text-xs transition-colors hover:opacity-80" style={{ color: '#7A6F60' }}>
+              faq
+            </Link>
+            <Link href="/privacy" className="text-xs transition-colors hover:opacity-80" style={{ color: '#7A6F60' }}>
+              privacy
+            </Link>
+            <Link href="/terms" className="text-xs transition-colors hover:opacity-80" style={{ color: '#7A6F60' }}>
+              terms
+            </Link>
           </div>
         </div>
       </footer>

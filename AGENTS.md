@@ -39,7 +39,7 @@ domino/
 | Server | Uvicorn (ASGI) |
 | ORM | SQLAlchemy 2.x (async) |
 | Database (local) | SQLite via aiosqlite |
-| Database (prod) | Supabase PostgreSQL via asyncpg |
+| Database (prod) | Google Cloud SQL (PostgreSQL) via asyncpg + Cloud SQL Auth Proxy |
 | AI | Google Gemini (`google-genai`) |
 | WhatsApp | Twilio |
 | Email | Resend |
@@ -181,7 +181,7 @@ Set `NEXT_PUBLIC_API_URL=http://localhost:8000` in `frontend/.env.local` to prox
 
 **FastAPI** with async SQLAlchemy. Database schema is created at startup via raw SQL in `app/main.py` lifespan — there are no Alembic migrations.
 
-- `app/core/config.py` — Pydantic settings loaded from `.env`. Default DB is SQLite (`domino.db`); production uses Supabase PostgreSQL.
+- `app/core/config.py` — Pydantic settings loaded from `.env`. Default DB is SQLite (`domino.db`); production uses Google Cloud SQL (PostgreSQL), connected via Unix socket (`host=/cloudsql/...`).
 - `app/api/endpoints/auth.py` — Session-based auth. Sessions are UUID rows in `domino_sessions`; the UUID is the Bearer token. Also handles OTP (WhatsApp 6-digit code) and optional password login.
 - `app/api/endpoints/webhook.py` — Twilio inbound WhatsApp handler. Dispatches to handlers for save, login, delete, list, settings, email collection, image, and voice. Also exposes `/digest/trigger` (internal, protected by `DOMINO_INTERNAL_SECRET`).
 - `app/api/endpoints/items.py` — CRUD for saved items.

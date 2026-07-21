@@ -305,6 +305,10 @@ struct LoginView: View {
 private extension View {
     func fieldStyle() -> some View {
         self
+            // Explicit ink — system Dark Mode defaults TextField/SecureField text to white,
+            // which disappears on DominoColors.paper.
+            .foregroundStyle(DominoColors.ink)
+            .tint(DominoColors.accent)
             .padding()
             .background(DominoColors.paper)
             .clipShape(RoundedRectangle(cornerRadius: 12))

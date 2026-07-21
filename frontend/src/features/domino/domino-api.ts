@@ -33,6 +33,8 @@ export interface DominoItem {
   extracted_text: string | null;
   summary: string | null;
   topic: string | null;
+  /** Ranked labels; [0] is the main topic. Falls back to [topic] when absent. */
+  topics?: string[];
   key_ideas: string[];
   created_at: string | null;
   digest_sent: boolean;
@@ -196,6 +198,20 @@ export const dominoApi = {
       method: 'POST',
       headers: authHeaders(token),
     });
+  },
+
+  async exportAccount(token: string): Promise<Record<string, unknown>> {
+    const res = await fetch(`${BASE}/auth/me/export`, { headers: authHeaders(token) });
+    return handleResponse(res);
+  },
+
+  async deleteAccount(token: string, password?: string): Promise<{ success: boolean }> {
+    const res = await fetch(`${BASE}/auth/me/delete`, {
+      method: 'POST',
+      headers: authHeaders(token),
+      body: JSON.stringify({ confirm: 'delete', ...(password ? { password } : {}) }),
+    });
+    return handleResponse(res);
   },
 
   async getItems(token: string, limit = 100, offset = 0): Promise<DominoItem[]> {

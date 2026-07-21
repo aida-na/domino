@@ -1,0 +1,4 @@
+#include "Release.xcconfig"
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = iPhone Distribution
+DEVELOPMENT_TEAM = 2CTC2JW55A

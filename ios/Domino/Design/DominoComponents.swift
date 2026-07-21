@@ -76,6 +76,8 @@ struct DominoSearchField: View {
                 .foregroundStyle(DominoColors.ink3)
             TextField(placeholder, text: $text)
                 .font(.dominoBody(16))
+                .foregroundStyle(DominoColors.ink)
+                .tint(DominoColors.accent)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
             if !text.isEmpty {

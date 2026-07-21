@@ -1,7 +1,14 @@
 import Foundation
 
 enum AppConfig {
-    static let apiBaseURL = URL(string: "https://domino-414681726671.us-central1.run.app/api/v1")!
+    static let apiBaseURL: URL = {
+        if let raw = Bundle.main.object(forInfoDictionaryKey: "APIBaseURL") as? String,
+           let url = URL(string: raw) {
+            return url
+        }
+        // Fallback for previews / misconfigured builds
+        return URL(string: "https://domino-414681726671.us-central1.run.app/api/v1")!
+    }()
     static let keychainService = "fyi.domino.app"
     static let sessionAccount = "domino_session"
     static let phoneAccount = "domino_phone"

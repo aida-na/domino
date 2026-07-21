@@ -46,6 +46,7 @@ targets:
         CFBundleDisplayName: domino
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        APIBaseURL: $(API_BASE_URL)
         ITSAppUsesNonExemptEncryption: false
         UIRequiresFullScreen: true
         UILaunchScreen:

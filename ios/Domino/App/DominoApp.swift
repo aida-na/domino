@@ -23,6 +23,9 @@ struct DominoApp: App {
             }
             .environment(auth)
             .font(.dominoBody(16))
+            // Design tokens are light-surface only; without this, Dark Mode makes
+            // TextField/SecureField text white on white paper backgrounds.
+            .preferredColorScheme(.light)
             .task { await auth.bootstrap() }
             .onOpenURL { url in
                 handleIncomingURL(url)

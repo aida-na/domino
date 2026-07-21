@@ -72,7 +72,7 @@ export default function DominoPrivacyPage() {
             </li>
             <li>
               <strong className="font-semibold text-[#1A1208]">iOS app credentials:</strong> session tokens
-              are stored in the device Keychain (shared with the Safari share extension via an App Group) so
+              are stored in the device Keychain (shared with the Safari share extension) so
               you stay signed in. we do not use advertising identifiers or App Tracking Transparency.
             </li>
           </ul>

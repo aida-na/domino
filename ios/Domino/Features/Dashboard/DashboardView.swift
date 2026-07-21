@@ -26,7 +26,9 @@ struct DashboardView: View {
     private let api = DominoAPI()
 
     private var folders: [String] {
-        let topics = items.flatMap(\.resolvedTopics)
+        let topics = items.flatMap { item in
+            BookmarkMapper.toBookmark(item).displayCategories
+        }
         return Array(Set(topics)).sorted {
             $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
         }
@@ -461,6 +463,7 @@ struct ItemDetailSheet: View {
         guard let snippet = bookmark.snippet?.trimmingCharacters(in: .whitespacesAndNewlines),
               !snippet.isEmpty else { return nil }
         let title = (bookmark.title ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !title.isEmpty else { return snippet }
         let body = snippet.lowercased()
         if body == title || body.hasPrefix(title) || title.hasPrefix(body) { return nil }
         return snippet
@@ -491,7 +494,7 @@ struct ItemDetailSheet: View {
                             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
 
-                    Text(bookmark.title ?? "untitled")
+                    Text(bookmark.displayTitle)
                         .font(.dominoDisplay(22, weight: .bold))
                         .foregroundStyle(DominoColors.ink)
                         .textCase(.lowercase)

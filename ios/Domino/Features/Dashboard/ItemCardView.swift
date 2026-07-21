@@ -21,7 +21,7 @@ struct ItemCardView: View {
             }
 
             HighlightedTitle(
-                text: bookmark.title ?? bookmark.domain ?? bookmark.kind.rawValue,
+                text: bookmark.displayTitle,
                 query: highlightQuery,
                 size: 20
             )
@@ -37,13 +37,13 @@ struct ItemCardView: View {
             }
 
             HStack(spacing: 8) {
-                if let topic = bookmark.categories.first {
+                ForEach(Array(bookmark.displayCategories.prefix(3).enumerated()), id: \.offset) { idx, topic in
                     Text(topic)
                         .font(.dominoBody(12, weight: .medium))
-                        .foregroundStyle(DominoColors.ink2)
+                        .foregroundStyle(idx == 0 ? DominoColors.ink2 : DominoColors.ink3)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
-                        .background(DominoColors.card(bookmark.colorKey).opacity(bookmark.pinned ? 0.55 : 1))
+                        .background(DominoColors.card(bookmark.colorKey).opacity(bookmark.pinned ? 0.55 : (idx == 0 ? 1 : 0.7)))
                         .clipShape(Capsule())
                 }
 

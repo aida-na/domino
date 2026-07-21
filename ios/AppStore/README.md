@@ -126,16 +126,68 @@ Create the review account before submitting and fill in the placeholders above.
 
 ---
 
+## Pre-launch checklist (security + compliance)
+
+### Backend (production Cloud Run)
+
+- [ ] Set `ENVIRONMENT=production` and `DEBUG=false` (CI sets these on deploy)
+- [ ] Rotate all secrets if they were ever exposed in logs
+- [ ] Run `backend/scripts/setup-gcp-secrets.sh` then `--bind` to move secrets to GCP Secret Manager
+- [ ] Confirm `BLOOIO_WEBHOOK_SECRET` and `DOMINO_INTERNAL_SECRET` are set (app refuses to boot without them in prod)
+- [ ] Create **App Review demo account** with password login (see §5)
+- [ ] Deploy latest backend to prod (`push to main` or `workflow_dispatch`)
+
+### Staging (optional but recommended)
+
+- [ ] Deploy `domino-api-staging` Cloud Run service with **separate database**
+- [ ] Set GitHub secret `STAGING_API_URL` for frontend staging builds
+- [ ] iOS **Debug** builds point to staging (`ios/Config/Debug.xcconfig`)
+
+### iOS
+
+- [ ] **Release** builds → production API (`ios/Config/Release.xcconfig`)
+- [ ] **Debug** builds → staging API (or `127.0.0.1:8000` in Simulator)
+- [ ] Run `xcodegen generate` after xcconfig changes
+- [ ] Device QA: OTP login, password login, share extension, sign out, delete account, export data
+- [ ] Rebuild TestFlight: `cd ios && ./scripts/testflight.sh`
+
+### App Store Connect
+
+- [ ] Screenshots (6.7" + 6.5" required)
+- [ ] Privacy nutrition labels match `frontend/src/app/privacy/page.tsx`
+- [ ] App Review notes + demo credentials (§5)
+
+### User data endpoints (implemented)
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /auth/me/export` | JSON export (CCPA right to access) |
+| `POST /auth/me/delete` | Account + all saves deletion |
+
+Web: **me → share & export**. iOS: **profile → export / delete account**.
+
+---
+
 ## 6. Production env (backend)
 
 On Cloud Run (production), set:
 
 ```
+ENVIRONMENT=production
+DEBUG=false
 FRONTEND_URL=https://www.domino.fyi
 ```
 
-so magic-link iMessages open on www (AASA-compatible) until the apex redirect is removed.
-After apex serves AASA with HTTP 200, you can switch back to `https://domino.fyi`.
+Use `backend/scripts/setup-gcp-secrets.sh` for `DATABASE_URL`, `GEMINI_API_KEY`, `BLOOIO_*`, `RESEND_API_KEY`, `DOMINO_INTERNAL_SECRET`, and `SECRET_KEY`.
+
+```bash
+cd backend
+./scripts/setup-gcp-secrets.sh --enable-api   # once: enable Secret Manager API
+./scripts/setup-gcp-secrets.sh --import      # copy existing Cloud Run env vars → secrets
+./scripts/setup-gcp-secrets.sh --bind          # remove plain env vars, attach secret refs
+```
+
+If `--bind` fails with "already been set with a different type", the script now removes plain env vars first. If Secret Manager API is disabled, run `--enable-api` first (or enable via [GCP console](https://console.developers.google.com/apis/api/secretmanager.googleapis.com/overview?project=domino-500918)).
 
 ---
 

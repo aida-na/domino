@@ -1,3 +1,4 @@
-// Set your Apple Developer Team ID here (10-character string).
-// Find it at https://developer.apple.com/account → Membership
+// Debug builds → staging API. Override locally for Simulator:
+//   API_BASE_URL = http:/$()/127.0.0.1:8000/api/v1
 DEVELOPMENT_TEAM = 2CTC2JW55A
+API_BASE_URL = https:/$()/domino-api-staging-414681726671.us-central1.run.app/api/v1

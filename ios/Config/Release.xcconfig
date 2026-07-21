@@ -1,1 +1,2 @@
 DEVELOPMENT_TEAM = 2CTC2JW55A
+API_BASE_URL = https:/$()/domino-414681726671.us-central1.run.app/api/v1

@@ -18,6 +18,20 @@ struct Bookmark: Identifiable, Hashable {
     let pinned: Bool
     let checklistDone: Int
     let checklistTotal: Int
+
+    /// Card/detail headline: article title, note first line, or domain for links.
+    var displayTitle: String {
+        title ?? domain ?? kind.rawValue
+    }
+
+    /// Topic pills — hide redundant General when a specific label exists.
+    var displayCategories: [String] {
+        let cats = categories.filter { !$0.isEmpty }
+        if cats.count > 1 {
+            return cats.filter { $0.lowercased() != "general" }
+        }
+        return cats
+    }
 }
 
 enum BookmarkMapper {
@@ -34,6 +48,7 @@ enum BookmarkMapper {
     }
 
     static func timeAgo(days: Int) -> String {
+        if days < 0 { return "" }
         if days < 1 { return "today" }
         if days < 2 { return "1d ago" }
         if days < 7 { return "\(days)d ago" }
@@ -59,8 +74,8 @@ enum BookmarkMapper {
         let isLink = item.inputType == .link
         let isNote = item.inputType == .note
         let domain = isLink ? extractDomain(item.rawInput) : nil
-        let rawTopic = item.topic?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let topic = rawTopic.isEmpty ? "Inbox" : rawTopic
+        let topics = item.resolvedTopics
+        let topic = topics.first ?? "Inbox"
         let progress = isNote ? checklistProgress(in: item.rawInput) : (0, 0)
 
         return Bookmark(
@@ -71,7 +86,7 @@ enum BookmarkMapper {
             mediaURL: item.inputType == .image ? item.rawInput : nil,
             domain: domain,
             colorKey: hashColor(topic),
-            categories: [topic],
+            categories: topics,
             body: item.rawInput,
             snippet: isNote
                 ? noteCardSnippet(item.rawInput)
@@ -99,9 +114,38 @@ enum BookmarkMapper {
         return host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
     }
 
+    private static let isoWithFractional: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    private static let isoBasic: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
+    private static let naiveISOFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone(secondsFromGMT: 0)
+        f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        return f
+    }()
+
+    private static func parseISO8601(_ iso: String) -> Date? {
+        if let date = isoWithFractional.date(from: iso) { return date }
+        if let date = isoBasic.date(from: iso) { return date }
+        return naiveISOFormatter.date(from: String(iso.prefix(19)))
+    }
+
     private static func daysSince(_ iso: String?) -> Int {
-        guard let iso, let date = ISO8601DateFormatter().date(from: iso) else { return 0 }
-        return max(0, Int(Date().timeIntervalSince(date) / 86_400))
+        guard let iso, let date = parseISO8601(iso) else { return -1 }
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let saved = cal.startOfDay(for: date)
+        return max(0, cal.dateComponents([.day], from: saved, to: today).day ?? 0)
     }
 
     private static func extractTitle(_ item: Item) -> String? {

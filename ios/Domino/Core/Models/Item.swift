@@ -11,6 +11,8 @@ struct Item: Codable, Identifiable, Hashable {
     let extractedText: String?
     let summary: String?
     let topic: String?
+    /// Ranked labels; index 0 is the main topic. Falls back to `[topic]` when absent.
+    let topics: [String]?
     let keyIdeas: [String]
     let createdAt: String?
     let digestSent: Bool
@@ -22,12 +24,21 @@ struct Item: Codable, Identifiable, Hashable {
         case rawInput = "raw_input"
         case inputType = "input_type"
         case extractedText = "extracted_text"
-        case summary, topic
+        case summary, topic, topics
         case keyIdeas = "key_ideas"
         case createdAt = "created_at"
         case digestSent = "digest_sent"
         case isPinned = "is_pinned"
         case isFavorited = "is_favorited"
+    }
+
+    /// Primary-first label list for UI/map grouping.
+    var resolvedTopics: [String] {
+        if let topics, !topics.isEmpty { return topics }
+        if let topic, !topic.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return [topic]
+        }
+        return ["Inbox"]
     }
 }
 
