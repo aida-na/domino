@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import select, update
 
 from app.db.session import AsyncSessionLocal
+from app.core.privacy import mask_phone
 from app.models.domino import DominoItem, DominoUser
 from app.services.gemini_client import DEFAULT_GEMINI_MODEL, generate_with_retry
 
@@ -154,7 +155,7 @@ async def send_weekly_digests(force: bool = False, phone: str | None = None) -> 
                     )
                     digest_text = digest_text.strip()
                 except Exception as e:
-                    logger.warning("Gemini weekly digest failed for %s: %s", user.phone, e)
+                    logger.warning("Gemini weekly digest failed for %s: %s", mask_phone(user.phone), e)
                     topic_str = ", ".join(topics_used) if topics_used else "various topics"
                     concept_str = ", ".join(top_concepts[:5]) if top_concepts else ""
                     digest_text = (
@@ -192,6 +193,6 @@ async def send_weekly_digests(force: bool = False, phone: str | None = None) -> 
                     skipped_count += 1
 
             except Exception as e:
-                logger.error("Weekly digest error for user %s: %s", user.phone, e)
+                logger.error("Weekly digest error for user %s: %s", mask_phone(user.phone), e)
 
     return {"sent": sent_count, "skipped": skipped_count}

@@ -5,6 +5,7 @@ import re
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.datetime_utils import serialize_datetime
 from app.models.domino import DominoItem, DominoMessage
 from app.services.gemini_client import DEFAULT_GEMINI_MODEL, generate_chat_with_retry
 
@@ -112,7 +113,7 @@ async def answer_question_web(
             sources.append({
                 "id": str(item.id),
                 "summary": item.summary or item.raw_input[:100],
-                "created_at": item.created_at.isoformat() if item.created_at else None,
+                "created_at": serialize_datetime(item.created_at),
             })
 
     return answer, sources

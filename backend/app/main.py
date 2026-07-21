@@ -8,6 +8,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
+from app.api.endpoints.auth import purge_expired_otps
 from app.core.config import settings
 from app.core.rate_limiter import limiter
 from app.api.api import api_router
@@ -54,6 +55,7 @@ async def _apply_startup_schema() -> None:
                         extracted_text TEXT,
                         summary TEXT,
                         topic VARCHAR,
+                        topics TEXT[],
                         key_ideas TEXT[],
                         created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                         digest_sent BOOLEAN NOT NULL DEFAULT false,
@@ -137,8 +139,15 @@ async def _apply_startup_schema() -> None:
                     "ALTER TABLE domino_users ADD COLUMN IF NOT EXISTS referred_by VARCHAR",
                     "ALTER TABLE domino_users ADD COLUMN IF NOT EXISTS digest_opted_out BOOLEAN NOT NULL DEFAULT false",
                     "ALTER TABLE domino_waitlist ADD COLUMN IF NOT EXISTS referred_by VARCHAR",
+                    "ALTER TABLE domino_items ADD COLUMN IF NOT EXISTS topics TEXT[]",
                 ):
                     await conn.execute(text(stmt))
+                # Backfill topics from legacy single topic when empty
+                await conn.execute(text("""
+                    UPDATE domino_items
+                    SET topics = ARRAY[topic]
+                    WHERE topics IS NULL AND topic IS NOT NULL AND topic <> ''
+                """))
                 await conn.execute(text("""
                     CREATE UNIQUE INDEX IF NOT EXISTS ix_domino_users_invite_code
                     ON domino_users (invite_code)
@@ -154,12 +163,44 @@ async def _apply_startup_schema() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Boot immediately; apply schema in the background so PORT can bind."""
+    logger.info("Domino API starting (environment=%s)", settings.ENVIRONMENT)
     schema_task: asyncio.Task | None = None
     if settings.RUN_STARTUP_SCHEMA:
         schema_task = asyncio.create_task(_apply_startup_schema())
 
+    async def _maintenance_loop() -> None:
+        while True:
+            await asyncio.sleep(3600)
+            try:
+                from app.db.session import AsyncSessionLocal
+
+                async with AsyncSessionLocal() as db:
+                    removed = await purge_expired_otps(db)
+                    if removed:
+                        logger.info("Purged %d expired OTP rows", removed)
+            except Exception:
+                logger.exception("OTP maintenance failed")
+
+    maintenance_task = asyncio.create_task(_maintenance_loop())
+
+    async def _startup_otp_purge() -> None:
+        try:
+            from app.db.session import AsyncSessionLocal
+
+            async with AsyncSessionLocal() as db:
+                removed = await purge_expired_otps(db)
+                if removed:
+                    logger.info("Startup: purged %d expired OTP rows", removed)
+        except Exception:
+            logger.exception("Startup OTP purge failed")
+
+    asyncio.create_task(_startup_otp_purge())
+
     yield
 
+    maintenance_task.cancel()
+    with suppress(asyncio.CancelledError):
+        await maintenance_task
     if schema_task and not schema_task.done():
         schema_task.cancel()
         with suppress(asyncio.CancelledError):

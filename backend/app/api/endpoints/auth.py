@@ -9,13 +9,14 @@ from uuid import UUID
 import bcrypt
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.datetime_utils import serialize_datetime
 from app.core.rate_limiter import limiter
 from app.db.session import get_db
-from app.models.domino import DominoOTP, DominoSession, DominoUser
+from app.models.domino import DominoItem, DominoOTP, DominoSession, DominoUser
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth")
@@ -217,6 +218,58 @@ async def create_session_for_phone(
 def build_magic_link(session_token: str) -> str:
     base = (settings.FRONTEND_URL or "https://domino.fyi").rstrip("/")
     return f"{base}/dashboard?token={session_token}"
+
+
+async def purge_expired_otps(db: AsyncSession) -> int:
+    """Delete used or expired OTP rows. Returns rows removed."""
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        delete(DominoOTP).where(
+            (DominoOTP.used == True) | (DominoOTP.expires_at <= now)  # noqa: E712
+        )
+    )
+    await db.commit()
+    return int(result.rowcount or 0)
+
+
+async def revoke_other_sessions(
+    db: AsyncSession,
+    *,
+    user_phone: str,
+    keep_session_id: UUID | None = None,
+) -> None:
+    """Invalidate all sessions for user except optionally the current one."""
+    stmt = delete(DominoSession).where(DominoSession.user_phone == user_phone)
+    if keep_session_id is not None:
+        stmt = stmt.where(DominoSession.id != keep_session_id)
+    await db.execute(stmt)
+
+
+async def get_domino_user_with_session(
+    authorization: str | None = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> tuple[DominoUser, DominoSession]:
+    """Like get_domino_user but also returns the validated session row."""
+    session_uuid = _parse_bearer_session_uuid(authorization)
+    if session_uuid is None:
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(DominoSession).where(
+            DominoSession.id == session_uuid,
+            DominoSession.expires_at > now,
+        )
+    )
+    session = result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+    user_result = await db.execute(
+        select(DominoUser).where(DominoUser.phone == session.user_phone)
+    )
+    user = user_result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user, session
 
 
 async def get_domino_user(
@@ -510,13 +563,15 @@ class SetPasswordBody(BaseModel):
 @router.post("/password/set")
 async def set_password(
     body: SetPasswordBody,
-    current_user: DominoUser = Depends(get_domino_user),
+    user_session: tuple[DominoUser, DominoSession] = Depends(get_domino_user_with_session),
     db: AsyncSession = Depends(get_db),
 ):
+    current_user, session = user_session
     if body.password != body.password_confirm:
         raise HTTPException(status_code=400, detail="Passwords do not match")
 
     current_user.password_hash = _hash_domino_password(body.password)
+    await revoke_other_sessions(db, user_phone=current_user.phone, keep_session_id=session.id)
     await db.commit()
     return {"ok": True}
 
@@ -548,3 +603,74 @@ async def password_login(
         "phone": phone,
         "has_password": True,
     }
+
+
+# ---------------------------------------------------------------------------
+# Account data (export / deletion)
+# ---------------------------------------------------------------------------
+
+
+class DeleteAccountBody(BaseModel):
+    confirm: str = Field(..., min_length=1, max_length=32)
+    password: str | None = Field(default=None, max_length=128)
+
+
+@router.get("/me/export")
+async def export_account(
+    current_user: DominoUser = Depends(get_domino_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Download a JSON export of profile + all saved items (CCPA right to access)."""
+    items_result = await db.execute(
+        select(DominoItem)
+        .where(DominoItem.user_phone == current_user.phone)
+        .order_by(DominoItem.created_at.desc())
+    )
+    items = items_result.scalars().all()
+    return {
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "profile": _serialize_me(current_user),
+        "items": [
+            {
+                "id": str(item.id),
+                "raw_input": item.raw_input,
+                "input_type": item.input_type,
+                "extracted_text": item.extracted_text,
+                "summary": item.summary,
+                "topic": item.topic,
+                "topics": item.topics,
+                "key_ideas": item.key_ideas or [],
+                "created_at": serialize_datetime(item.created_at),
+                "is_pinned": item.is_pinned,
+                "is_favorited": item.is_favorited,
+            }
+            for item in items
+        ],
+        "item_count": len(items),
+    }
+
+
+@router.post("/me/delete")
+async def delete_account(
+    body: DeleteAccountBody,
+    user_session: tuple[DominoUser, DominoSession] = Depends(get_domino_user_with_session),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Permanently delete the account and all associated data.
+    Requires confirm='delete' and password when a password is set.
+    """
+    current_user, _session = user_session
+    if body.confirm.strip().lower() != "delete":
+        raise HTTPException(status_code=400, detail="Type 'delete' to confirm account deletion")
+
+    if current_user.password_hash:
+        if not body.password or not _verify_domino_password(body.password, current_user.password_hash):
+            raise HTTPException(status_code=401, detail="Invalid password")
+
+    phone = current_user.phone
+    await db.execute(delete(DominoOTP).where(DominoOTP.phone == phone))
+    await db.delete(current_user)
+    await db.commit()
+    logger.info("Account deleted for phone ending %s", phone[-4:])
+    return {"success": True}

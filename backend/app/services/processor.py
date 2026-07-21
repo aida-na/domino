@@ -45,6 +45,16 @@ TOPIC_ALIASES: dict[str, str] = {
     "wellness": "Health & Wellness",
     "fitness": "Health & Wellness",
     "medicine": "Health & Wellness",
+    "medical": "Health & Wellness",
+    "healthcare": "Health & Wellness",
+    "clinical": "Health & Wellness",
+    "wearable": "Health & Wellness",
+    "wearables": "Health & Wellness",
+    "patient": "Health & Wellness",
+    "biotech": "Health & Wellness",
+    "pharma": "Health & Wellness",
+    "research": "Science",
+    "science": "Science",
     "art": "Art & Design",
     "design": "Art & Design",
     "food": "Cooking",
@@ -103,10 +113,18 @@ def detect_input_type(raw: str, mime: str | None = None) -> str:
 
 
 _TOPIC_PROMPT = """\
-Assign this content to up to THREE topics from the list below, ranked best-first.
-The first topic is the main label; the next two are secondary labels that also fit.
-Return JSON only — an array of 1 to 3 topic names.
-Use EXACT strings from the Topics list (e.g. "Technology", not "Tech" or "News").
+Classify this content into 1–3 topics from the list below, ranked best-first.
+The first topic is the primary label; others are secondary when clearly relevant.
+
+Rules:
+- Be specific and decisive. Pick the narrowest topics that fit.
+- Do NOT use "General" if any specific topic applies.
+- AI, ML, LLMs, models, agents → "AI & Machine Learning"
+- Health, medicine, wearables, patients, clinical data → "Health & Wellness"
+- Startups, software, gadgets, tech industry → "Technology"
+- Use "General" ONLY for content with no identifiable subject (e.g. a bare URL, shopping list).
+
+Return JSON only — an array of 1 to 3 topic names using EXACT strings from the list.
 No markdown.
 
 Topics: {topics}
@@ -115,6 +133,52 @@ Content:
 {preview}
 
 JSON:"""
+
+# Keyword signals when the model returns only General (or classification fails).
+_TOPIC_TEXT_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    (
+        "AI & Machine Learning",
+        re.compile(
+            r"\b(?:ai|ml|llm|gpt|machine learning|deep learning|neural net(?:work)?s?|"
+            r"generative ai|artificial intelligence|large language model|"
+            r"computer vision|transformer models?|foundation models?)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "Health & Wellness",
+        re.compile(
+            r"\b(?:wearable?s?|patient(?:-generated)?|clinical|healthcare|health care|"
+            r"medical|biotech|pharma(?:ceutical)?|physician|hospital|diagnos(?:is|e)|"
+            r"therapeutic|wellness|fda|life sciences?)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "Technology",
+        re.compile(
+            r"\b(?:startup?s?|software|saas|app(?:lication)?s?|gadgets?|"
+            r"cybersecurity|cloud computing|open source|developer tools?)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "Business",
+        re.compile(
+            r"\b(?:venture capital|fundraising|seed round|revenue|go-to-market|"
+            r"enterprise sales|b2b|b2c|market strategy)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "Science",
+        re.compile(
+            r"\b(?:research study|peer-reviewed|laboratory|experiment(?:al)?|"
+            r"scientific method|hypothesis)\b",
+            re.IGNORECASE,
+        ),
+    ),
+]
 
 
 def _canonical_topic(label: str) -> str | None:
@@ -133,6 +197,53 @@ def _canonical_topic(label: str) -> str | None:
         if len(alias) >= 3 and alias in key:
             return canonical
     return None
+
+
+def topic_hints_from_text(text: str, *, limit: int = 3) -> list[str]:
+    """Score content for topic keywords — used when the model returns General."""
+    if not text.strip():
+        return []
+    scores: dict[str, int] = {}
+    for topic, pattern in _TOPIC_TEXT_PATTERNS:
+        hits = len(pattern.findall(text))
+        if hits:
+            scores[topic] = scores.get(topic, 0) + hits
+    # Title-style "AI: ..." — treat the subject as AI-first.
+    if re.match(r"^\s*ai\b", text, re.IGNORECASE):
+        scores["AI & Machine Learning"] = scores.get("AI & Machine Learning", 0) + 2
+    ranked = sorted(scores.items(), key=lambda kv: (-kv[1], TOPIC_LIST.index(kv[0]) if kv[0] in TOPIC_LIST else 99))
+    return [topic for topic, _ in ranked[:limit]]
+
+
+def _resolve_weak_topics(
+    topics: list[str],
+    text: str,
+    *,
+    url: str | None = None,
+) -> list[str]:
+    """Replace conservative General labels with URL/text hints when we can."""
+    primary = topics[0] if topics else "General"
+    text_hints = topic_hints_from_text(text)
+    url_hint = topic_hint_from_url(url or text)
+
+    if primary == "General":
+        candidates: list[str] = []
+        if url_hint:
+            candidates.append(url_hint)
+        candidates.extend(text_hints)
+        if candidates:
+            return normalize_topics(candidates)
+
+    if primary in {"General", "Culture"} and url_hint:
+        return normalize_topics([url_hint, *[t for t in topics if t != url_hint]])
+
+    # Model picked something, but missed an obvious secondary (e.g. AI + health article).
+    if text_hints and primary != "General":
+        merged = normalize_topics([*topics, *text_hints])
+        if merged != topics:
+            return merged
+
+    return topics
 
 
 def topic_hint_from_url(url: str) -> str | None:
@@ -169,6 +280,9 @@ def normalize_topics(
         seen.add(canonical.lower())
         if len(out) >= limit:
             break
+    # General is a last-resort label — drop it when we already have something specific.
+    if len(out) > 1:
+        out = [t for t in out if t != "General"]
     if not out:
         fb = _canonical_topic(fallback) or "General"
         return [fb]
@@ -177,12 +291,12 @@ def normalize_topics(
 
 async def classify_topics(text: str, *, url: str | None = None) -> list[str]:
     """Return 1–3 ranked topics from TOPIC_LIST (primary first)."""
-    preview = text[:800].strip()
+    preview = text[:2000].strip()
     if not preview:
         hint = topic_hint_from_url(url or "")
         return [hint] if hint else ["General"]
 
-    prompt = _TOPIC_PROMPT.format(topics=", ".join(TOPIC_LIST), preview=preview)
+    prompt = _TOPIC_PROMPT.format(topics=", ".join(TOPIC_LIST), preview=preview[:800])
     try:
         raw = await generate_with_retry(DEFAULT_GEMINI_MODEL, prompt, max_output_tokens=64)
         parsed = json.loads(strip_json_markdown(raw))
@@ -197,11 +311,7 @@ async def classify_topics(text: str, *, url: str | None = None) -> list[str]:
         logger.warning("classify_topics failed: %s", e)
         topics = ["General"]
 
-    # Known publishers beat weak/generic labels (e.g. model says "News" → Culture).
-    hint = topic_hint_from_url(url or text)
-    if hint and topics[0] in {"General", "Culture"}:
-        return normalize_topics([hint, *[t for t in topics if t != hint]])
-    return topics
+    return _resolve_weak_topics(topics, preview, url=url)
 
 
 async def classify_topic(text: str) -> str:

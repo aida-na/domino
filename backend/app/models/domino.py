@@ -35,7 +35,8 @@ class DominoItem(Base):
     input_type = Column(String, nullable=False)  # link | pdf | image | note
     extracted_text = Column(Text, nullable=True)
     summary = Column(Text, nullable=True)
-    topic = Column(String, nullable=True)
+    topic = Column(String, nullable=True)  # primary label (topics[0])
+    topics = Column(ARRAY(String), nullable=True)  # up to 3 ranked labels, primary first
     key_ideas = Column(ARRAY(String), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     digest_sent = Column(Boolean, default=False, nullable=False, server_default="false")

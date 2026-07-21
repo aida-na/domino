@@ -1,6 +1,7 @@
 """Domino items endpoints — save, list, delete."""
 
 import logging
+from datetime import datetime, timezone
 from uuid import UUID
 
 import httpx
@@ -10,13 +11,16 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.endpoints.auth import get_domino_user
+from app.api.endpoints.auth import get_domino_user, get_domino_user_with_session
+from app.core.datetime_utils import serialize_datetime
+from app.core.media_tokens import create_media_token, verify_media_token
 from app.db.session import get_db
-from app.models.domino import DominoItem, DominoUser
+from app.models.domino import DominoItem, DominoSession, DominoUser
 from app.services.chat import answer_question_web
 from app.services.processor import (
     detect_input_type,
     enrich_note,
+    normalize_topics,
     process_url,
     topic_is_default,
 )
@@ -46,16 +50,26 @@ class PatchItemBody(BaseModel):
 
 # ── Helpers ───────────────────────────────────────────────────────────────
 
+def _item_topics(item: DominoItem) -> list[str]:
+    """Primary-first topic list for API responses (falls back to legacy topic)."""
+    topics = list(item.topics or [])
+    if not topics and item.topic:
+        topics = [item.topic]
+    return topics
+
+
 def _serialize_item(item: DominoItem) -> dict:
+    topics = _item_topics(item)
     return {
         "id": str(item.id),
         "raw_input": item.raw_input,
         "input_type": item.input_type,
         "extracted_text": item.extracted_text,
         "summary": item.summary,
-        "topic": item.topic,
+        "topic": item.topic or (topics[0] if topics else None),
+        "topics": topics,
         "key_ideas": item.key_ideas or [],
-        "created_at": item.created_at.isoformat() if item.created_at else None,
+        "created_at": serialize_datetime(item.created_at),
         "digest_sent": item.digest_sent,
         "is_pinned": item.is_pinned,
         "is_favorited": item.is_favorited,
@@ -71,10 +85,12 @@ async def _apply_note_enrichment(item: DominoItem) -> None:
     enriched = await enrich_note(
         text,
         current_topic=item.topic,
+        current_topics=list(item.topics or []),
         allow_topic_update=allow_topic,
     )
     if allow_topic:
         item.topic = enriched["topic"]
+        item.topics = enriched["topics"]
     if enriched["summary"]:
         item.summary = enriched["summary"]
     if enriched["key_ideas"]:
@@ -115,13 +131,15 @@ async def create_item(
 
     # Notes: fast path — no Gemini on the request. Client calls /enrich after.
     if input_type == "note":
+        primary = client_topic or "Inbox"
         item = DominoItem(
             user_phone=current_user.phone,
             raw_input=raw,
             input_type="note",
             extracted_text=raw,
             summary=None,
-            topic=client_topic or "Inbox",
+            topic=primary,
+            topics=[primary],
             key_ideas=[],
         )
         db.add(item)
@@ -135,13 +153,23 @@ async def create_item(
         from app.services.processor import process_note
         result = await process_note(raw)
 
+    if client_topic:
+        topics = normalize_topics(
+            [client_topic, *[t for t in (result.topics or []) if t != client_topic]]
+        )
+        primary = topics[0]
+    else:
+        topics = list(result.topics or ([result.topic] if result.topic else ["General"]))
+        primary = result.topic or topics[0]
+
     item = DominoItem(
         user_phone=current_user.phone,
         raw_input=raw,
         input_type=result.input_type,
         extracted_text=result.extracted_text or None,
         summary=result.summary or None,
-        topic=client_topic or result.topic or None,
+        topic=primary,
+        topics=topics,
         key_ideas=result.key_ideas or None,
     )
     db.add(item)
@@ -190,8 +218,11 @@ async def patch_item(
     if body.is_favorited is not None:
         item.is_favorited = body.is_favorited
     if body.topic is not None:
-        topic = body.topic.strip()
-        item.topic = topic or "Inbox"
+        topic = body.topic.strip() or "Inbox"
+        item.topic = topic
+        # Keep secondary labels; promote the user-chosen folder to primary.
+        rest = [t for t in (item.topics or []) if t.lower() != topic.lower()]
+        item.topics = normalize_topics([topic, *rest], fallback=topic)
     if body.raw_input is not None:
         raw = body.raw_input.strip()
         if not raw:
@@ -266,36 +297,96 @@ async def chat(
 
 # ── Media proxy ────────────────────────────────────────────────────────────
 
-@router.get("/media-proxy")
-async def media_proxy(
-    url: str = Query(...),
-    token: str | None = Query(default=None),
-    authorization: str | None = Header(default=None),
-    db: AsyncSession = Depends(get_db),
-):
-    """Proxy Twilio media. Accepts Bearer header OR ?token= query param (needed for <img> tags)."""
-    from datetime import datetime, timezone
-    from uuid import UUID
+async def _user_owns_media_url(db: AsyncSession, *, user_phone: str, media_url: str) -> bool:
+    """True when the URL appears on one of the user's saved items."""
+    result = await db.execute(
+        select(DominoItem.id)
+        .where(
+            DominoItem.user_phone == user_phone,
+            DominoItem.raw_input.contains(media_url),
+        )
+        .limit(1)
+    )
+    return result.scalar_one_or_none() is not None
 
-    from app.models.domino import DominoSession
 
-    # Resolve token from query param or Authorization header
-    raw_token = token or (authorization.split(" ", 1)[1].strip() if authorization and authorization.startswith("Bearer ") else None)
-    if not raw_token:
-        raise HTTPException(status_code=401, detail="Missing token")
-    try:
-        session_uuid = UUID(raw_token)
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+async def _resolve_media_session(
+    db: AsyncSession,
+    *,
+    media_url: str,
+    media_token: str | None,
+    raw_token: str | None,
+) -> DominoSession | None:
+    """Resolve a valid session from signed media token or legacy session UUID."""
+    now = datetime.now(timezone.utc)
+
+    if media_token:
+        session_id = verify_media_token(media_token, media_url)
+        if not session_id:
+            return None
+        try:
+            session_uuid = UUID(session_id)
+        except ValueError:
+            return None
+    elif raw_token:
+        try:
+            session_uuid = UUID(raw_token)
+        except ValueError:
+            return None
+    else:
+        return None
 
     result = await db.execute(
         select(DominoSession).where(
             DominoSession.id == session_uuid,
-            DominoSession.expires_at > datetime.now(timezone.utc),
+            DominoSession.expires_at > now,
         )
     )
-    if not result.scalar_one_or_none():
+    return result.scalar_one_or_none()
+
+
+@router.get("/media-token")
+async def issue_media_token(
+    url: str = Query(...),
+    user_session: tuple[DominoUser, DominoSession] = Depends(get_domino_user_with_session),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return a short-lived signed token for media-proxy (preferred over session UUID in URLs)."""
+    user, session = user_session
+    if not await _user_owns_media_url(db, user_phone=user.phone, media_url=url):
+        raise HTTPException(status_code=403, detail="Media not found in your saves")
+    token = create_media_token(session_id=str(session.id), media_url=url)
+    return {"media_token": token, "expires_in": 900}
+
+
+@router.get("/media-proxy")
+async def media_proxy(
+    url: str = Query(...),
+    token: str | None = Query(default=None),
+    media_token: str | None = Query(default=None),
+    authorization: str | None = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Proxy media for saved items. Accepts signed media_token, Bearer header, or legacy ?token=."""
+    raw_token = token or (
+        authorization.split(" ", 1)[1].strip()
+        if authorization and authorization.startswith("Bearer ")
+        else None
+    )
+    if not media_token and not raw_token:
+        raise HTTPException(status_code=401, detail="Missing token")
+
+    session = await _resolve_media_session(
+        db,
+        media_url=url,
+        media_token=media_token,
+        raw_token=raw_token if not media_token else None,
+    )
+    if not session:
         raise HTTPException(status_code=401, detail="Session expired or not found")
+
+    if not await _user_owns_media_url(db, user_phone=session.user_phone, media_url=url):
+        raise HTTPException(status_code=403, detail="Media not found in your saves")
 
     from app.services.storage import fetch_from_gcs, is_gcs_uri
 

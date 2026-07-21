@@ -57,7 +57,7 @@ async def process_due_reminders() -> int:
             except Exception as e:
                 logger.error(
                     "Reminder send failed for %s (id=%s): %s",
-                    reminder.user_phone, reminder.id, e,
+                    reminder.user_phone[-4:], reminder.id, e,
                 )
 
         await db.commit()

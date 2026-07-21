@@ -96,11 +96,15 @@ def send_message(to: str, body: str, *, attachments: list[str] | None = None) ->
     Successful sends return HTTP 202 (accepted/queued).
     """
     if not _configured():
-        logger.error(
-            "BLOOIO_API_KEY is not set — cannot send to %s (message printed to stdout only)",
-            to,
+        if settings.is_production:
+            raise BlooioError("BLOOIO_API_KEY is not configured")
+        from app.core.privacy import mask_phone
+
+        logger.warning(
+            "BLOOIO_API_KEY is not set — dev console fallback for %s",
+            mask_phone(to),
         )
-        print(f"\n[DOMINO DEV] Message to {to}: {body}\n", flush=True)
+        print(f"\n[DOMINO DEV] Message to {mask_phone(to)}: [redacted]\n", flush=True)
         return None
 
     # Omit from_number by default — Blooio auto-selects from the key's Channels pool.
@@ -136,7 +140,7 @@ def send_message(to: str, body: str, *, attachments: list[str] | None = None) ->
         data = resp.json()
         logger.info(
             "Blooio send ok to %s http=%s message_id=%s elapsed_ms=%d",
-            to,
+            to[-4:],
             resp.status_code,
             data.get("message_id") if isinstance(data, dict) else None,
             int((time.monotonic() - t0) * 1000),
@@ -145,14 +149,14 @@ def send_message(to: str, body: str, *, attachments: list[str] | None = None) ->
     except BlooioError as e:
         logger.error(
             "Blooio send_message to %s after %dms: %s body=%s",
-            to,
+            to[-4:],
             int((time.monotonic() - t0) * 1000),
             e,
             e.body,
         )
         raise
     except Exception as e:
-        logger.exception("Blooio send_message failed to %s: %s", to, e)
+        logger.exception("Blooio send_message failed to %s: %s", to[-4:], e)
         raise
 
 
@@ -211,7 +215,10 @@ def verify_webhook_signature(raw_body: bytes, signature_header: str | None) -> b
     """
     secret = settings.BLOOIO_WEBHOOK_SECRET
     if not secret:
-        return True
+        if settings.allow_unsigned_webhooks:
+            return True
+        logger.error("BLOOIO_WEBHOOK_SECRET is not set — rejecting webhook")
+        return False
     if not signature_header:
         return False
 

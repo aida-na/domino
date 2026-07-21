@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.privacy import mask_phone
 from app.db.session import AsyncSessionLocal, get_db
 from app.models.domino import DominoItem, DominoMessage, DominoUser
 from app.services.digest import send_weekly_digests
@@ -201,7 +202,7 @@ async def _handle_email_collection(phone: str, body: str, user: DominoUser, db: 
             await send_weekly_digests(force=True, phone=phone)
             reply = f"got it — sending your digest to {text.lower()} now 📬"
         except Exception as e:
-            logger.warning("Failed to send digest after email collection for %s: %s", phone, e)
+            logger.warning("Failed to send digest after email collection for %s: %s", mask_phone(phone), e)
             reply = f"saved your email ({text.lower()}) — you'll get next week's digest there 📬"
     else:
         reply = "that doesn't look like an email. reply with your email address or 'skip'."
@@ -426,7 +427,7 @@ async def _handle_image(phone: str, media_url: str, content_type: str, db: Async
         )
         description = description.strip()
     except Exception as e:
-        logger.warning("Image processing failed for %s: %s", phone, e)
+        logger.warning("Image processing failed for %s: %s", mask_phone(phone), e)
         raw_input = media_url
         description = "photo"
 
@@ -465,7 +466,7 @@ async def _handle_voice(phone: str, media_url: str, content_type: str, db: Async
         if not transcript:
             raise ValueError("Empty transcript")
     except Exception as e:
-        logger.warning("Voice transcription failed for %s: %s", phone, e)
+        logger.warning("Voice transcription failed for %s: %s", mask_phone(phone), e)
         reply = "sorry, i couldn't transcribe that voice note. try sending it as text."
         _send_message(phone, reply)
         await _log_message(db, phone, "outbound", reply)
@@ -560,7 +561,7 @@ async def _handle_message(
                 await _handle_save(phone, body, db, message_id=message_id)
 
         except Exception as e:
-            logger.error("Message handler error for %s: %s", phone, e, exc_info=True)
+            logger.error("Message handler error for %s: %s", mask_phone(phone), e, exc_info=True)
 
 
 async def _handle_media_message(
@@ -594,7 +595,7 @@ async def _handle_media_message(
             else:
                 await _handle_save(phone, media_url, db)
         except Exception as e:
-            logger.error("Media handler error for %s: %s", phone, e, exc_info=True)
+            logger.error("Media handler error for %s: %s", mask_phone(phone), e, exc_info=True)
 
 
 _HTTP_URL_RE = re.compile(r"https?://[^\s<>\"')\]]+", re.IGNORECASE)
