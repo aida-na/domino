@@ -502,7 +502,7 @@ struct DeleteAccountSheet: View {
     @Environment(AuthSession.self) private var auth
     @State private var confirmText = ""
     @State private var password = ""
-    @State private var error: String?
+    @State private var errorMessage: String?
     @State private var isDeleting = false
 
     private let api = DominoAPI()
@@ -530,8 +530,8 @@ struct DeleteAccountSheet: View {
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(DominoColors.hairline))
                 }
 
-                if let error {
-                    Text(error)
+                if let errorMessage {
+                    Text(errorMessage)
                         .font(.caption)
                         .foregroundStyle(.red)
                 }
@@ -571,7 +571,7 @@ struct DeleteAccountSheet: View {
     private func deleteAccount() async {
         guard confirmText.lowercased() == "delete", let token = auth.sessionToken else { return }
         isDeleting = true
-        error = nil
+        errorMessage = nil
         defer { isDeleting = false }
         do {
             _ = try await api.deleteAccount(
@@ -581,9 +581,9 @@ struct DeleteAccountSheet: View {
             await auth.logout()
             dismiss()
         } catch let apiError as APIError {
-            error = apiError.message
+            errorMessage = apiError.message
         } catch {
-            error = "couldn't delete account"
+            errorMessage = "couldn't delete account"
         }
     }
 }
