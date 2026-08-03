@@ -9,6 +9,10 @@ configFiles:
   Release: Config/Release.xcconfig
 settings:
   SWIFT_VERSION: "5.9"
+packages:
+  PostHog:
+    url: https://github.com/PostHog/posthog-ios
+    from: 3.59.3
 targets:
   Domino:
     type: application
@@ -25,7 +29,7 @@ targets:
       CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: "YES"
       ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       TARGETED_DEVICE_FAMILY: "1,2"
-      CURRENT_PROJECT_VERSION: 4
+      CURRENT_PROJECT_VERSION: 5
       MARKETING_VERSION: 1.0
     entitlements:
       path: Domino/Resources/Domino.entitlements
@@ -40,6 +44,8 @@ targets:
     dependencies:
       - target: DominoShare
         embed: true
+      - package: PostHog
+        product: PostHog
     info:
       path: Domino/Resources/Info.plist
       properties:
@@ -47,6 +53,8 @@ targets:
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         APIBaseURL: $(API_BASE_URL)
+        PostHogProjectToken: $(POSTHOG_PROJECT_TOKEN)
+        PostHogHost: $(POSTHOG_HOST)
         ITSAppUsesNonExemptEncryption: false
         UIRequiresFullScreen: true
         UILaunchScreen:
@@ -80,7 +88,7 @@ targets:
       CODE_SIGN_ENTITLEMENTS: DominoShare/DominoShare.entitlements
       CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: "YES"
       SKIP_INSTALL: YES
-      CURRENT_PROJECT_VERSION: 4
+      CURRENT_PROJECT_VERSION: 5
       MARKETING_VERSION: 1.0
     entitlements:
       path: DominoShare/DominoShare.entitlements

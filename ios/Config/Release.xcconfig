@@ -1,2 +1,4 @@
 DEVELOPMENT_TEAM = 2CTC2JW55A
 API_BASE_URL = https:/$()/domino-414681726671.us-central1.run.app/api/v1
+POSTHOG_PROJECT_TOKEN = phc_xu4PHLZesFatcKwJSr4xwC89si68eBBoN7JMbNWQWocs
+POSTHOG_HOST = https:/$()/us.i.posthog.com

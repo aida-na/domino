@@ -239,6 +239,7 @@ struct OnboardingView: View {
                 token: token,
                 patch: ProfileUpdate(email: trimmed, digestOptedOut: false)
             )
+            DominoAnalytics.capture("digest_email_saved")
             onEmailSaved(me.email ?? trimmed)
             finish()
         } catch {

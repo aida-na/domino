@@ -6,6 +6,7 @@ struct DominoApp: App {
 
     init() {
         DominoFonts.register()
+        DominoAnalytics.setup()
     }
 
     var body: some Scene {
@@ -18,7 +19,7 @@ struct DominoApp: App {
                 } else if auth.showMainApp {
                     MainTabView()
                 } else {
-                    LoginView()
+                    AuthFlowView()
                 }
             }
             .environment(auth)

@@ -9,6 +9,7 @@ import { DominoProtectedRoute } from '@/features/domino/domino-protected-route';
 import { DominoAppShell } from '@/features/domino/domino-app-shell';
 import { dominoApi, type DominoItem } from '@/features/domino/domino-api';
 import { ArrowLeft, Search } from 'lucide-react';
+import posthog from 'posthog-js';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -423,6 +424,7 @@ function MapContent() {
     setLoading(true);
     try {
       const res = await dominoApi.chat(sessionToken, userMessage);
+      posthog.capture('chat_question_sent');
       setMessages((prev) => [...prev, { role: 'assistant', text: res.answer, sources: res.sources }]);
     } catch (err) {
       setMessages((prev) => [

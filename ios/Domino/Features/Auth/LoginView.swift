@@ -17,6 +17,7 @@ struct LoginView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var noticeMessage: String?
+    @State private var signupFull = false
     @State private var showWaitlist = false
     @State private var waitlistEmail = ""
     @State private var waitlistNotice: String?
@@ -27,36 +28,28 @@ struct LoginView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 28) {
-                Spacer(minLength: 48)
+            VStack(spacing: 20) {
+                Spacer(minLength: 16)
 
-                Image("DominoBrand")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 200)
-                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    .shadow(color: DominoColors.accent.opacity(0.18), radius: 16, y: 8)
-                    .padding(.horizontal, 4)
-
-                DominoWordmark(size: 44)
-
-                Text(mode == .password ? "sign in with password" : "sign in with iMessage code")
-                    .font(.dominoBody(15))
-                    .foregroundStyle(DominoColors.ink3)
-                    .multilineTextAlignment(.center)
+                authHeader
 
                 VStack(spacing: 14) {
                     if step != .setPassword {
-                        TextField("phone number", text: $phone)
-                            .keyboardType(.phonePad)
-                            .textContentType(.telephoneNumber)
-                            .fieldStyle()
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("phone number")
+                                .font(.dominoBody(12, weight: .semibold))
+                                .foregroundStyle(DominoColors.ink3)
+                                .textCase(.lowercase)
+                            TextField("(650) 555-0100", text: $phone)
+                                .keyboardType(.phonePad)
+                                .textContentType(.telephoneNumber)
+                                .fieldStyle()
+                        }
                     }
 
                     if mode == .otp, step == .code {
                         Text("check iMessage for your code, sent to \(phone)")
-                            .font(.caption)
+                            .font(.dominoBody(13))
                             .foregroundStyle(DominoColors.ink3)
                             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -77,7 +70,7 @@ struct LoginView: View {
 
                     if step == .setPassword {
                         Text("optional: add a password so you can sign in without a code next time.")
-                            .font(.subheadline)
+                            .font(.dominoBody(13))
                             .foregroundStyle(DominoColors.ink3)
                             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -93,14 +86,14 @@ struct LoginView: View {
 
                 if let noticeMessage {
                     Text(noticeMessage)
-                        .font(.caption)
+                        .font(.dominoBody(13))
                         .foregroundStyle(DominoColors.ink2)
                         .multilineTextAlignment(.center)
                 }
 
                 if let errorMessage {
                     Text(errorMessage)
-                        .font(.caption)
+                        .font(.dominoBody(13))
                         .foregroundStyle(.red)
                         .multilineTextAlignment(.center)
                 }
@@ -129,7 +122,7 @@ struct LoginView: View {
                         errorMessage = nil
                         noticeMessage = nil
                     }
-                    .font(.subheadline)
+                    .font(.dominoBody(14))
                     .foregroundStyle(DominoColors.ink3)
                 }
 
@@ -140,7 +133,7 @@ struct LoginView: View {
                         password = ""
                         errorMessage = nil
                     }
-                    .font(.subheadline)
+                    .font(.dominoBody(14))
                     .foregroundStyle(DominoColors.ink3)
                 }
 
@@ -163,7 +156,7 @@ struct LoginView: View {
                             }
                         }
                     }
-                    .font(.subheadline)
+                    .font(.dominoBody(14))
                     .foregroundStyle(DominoColors.ink3)
                 }
 
@@ -171,7 +164,7 @@ struct LoginView: View {
                     Button("skip for now") {
                         auth.finishPasswordSetup()
                     }
-                    .font(.subheadline)
+                    .font(.dominoBody(14))
                     .foregroundStyle(DominoColors.ink3)
                 }
 
@@ -181,7 +174,7 @@ struct LoginView: View {
                             .font(.dominoBody(14, weight: .semibold))
                             .foregroundStyle(DominoColors.ink)
                         Text("we only let a few people in each day. leave your email and we’ll ping you.")
-                            .font(.caption)
+                            .font(.dominoBody(12))
                             .foregroundStyle(DominoColors.ink3)
                         TextField("email", text: $waitlistEmail)
                             .keyboardType(.emailAddress)
@@ -196,7 +189,7 @@ struct LoginView: View {
                         .foregroundStyle(DominoColors.accent)
                         if let waitlistNotice {
                             Text(waitlistNotice)
-                                .font(.caption)
+                                .font(.dominoBody(12))
                                 .foregroundStyle(DominoColors.ink2)
                         }
                     }
@@ -204,11 +197,11 @@ struct LoginView: View {
                     .background(DominoColors.paper)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 16).stroke(DominoColors.hairline))
-                } else if step == .phone {
+                } else if signupFull, step == .phone {
                     Button("full today? join waitlist") {
                         showWaitlist = true
                     }
-                    .font(.caption)
+                    .font(.dominoBody(12))
                     .foregroundStyle(DominoColors.ink4)
                 }
 
@@ -217,6 +210,45 @@ struct LoginView: View {
             .padding(.horizontal, 24)
         }
         .background(DominoColors.bg.ignoresSafeArea())
+        .task { await loadSignupStatus() }
+    }
+
+    private var authHeader: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            DominoPageTitle(title: headerTitle, size: 32)
+            if let headerSubtitle {
+                Text(headerSubtitle)
+                    .font(.dominoBody(15))
+                    .foregroundStyle(DominoColors.ink3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private var headerTitle: String {
+        switch step {
+        case .code: return "verify code"
+        case .setPassword: return "set a password"
+        case .phone: return "sign in"
+        }
+    }
+
+    private var headerSubtitle: String? {
+        switch step {
+        case .code, .setPassword:
+            return nil
+        case .phone:
+            if mode == .password {
+                return "use the password you set after your first iMessage sign-in."
+            }
+            return "we’ll iMessage you a one-time code."
+        }
+    }
+
+    private func loadSignupStatus() async {
+        guard let status = try? await api.getSignupStatus(), status.full else { return }
+        signupFull = true
+        showWaitlist = true
     }
 
     private var canSubmit: Bool {
@@ -251,6 +283,7 @@ struct LoginView: View {
             do {
                 if step == .setPassword {
                     try await auth.setPassword(password: newPassword, confirm: confirmPassword)
+                    DominoAnalytics.capture("password_setup_completed")
                     auth.finishPasswordSetup()
                     return
                 }
@@ -260,9 +293,11 @@ struct LoginView: View {
                 case .otp:
                     if step == .phone {
                         try await requestOTP(normalized: normalized)
+                        DominoAnalytics.capture("otp_requested")
                     } else {
                         let tokens = try await api.verifyOTP(phone: normalized, code: code)
                         try await auth.completeLogin(tokens: tokens, promptPasswordSetup: true)
+                        DominoAnalytics.capture("otp_verified", properties: ["has_password": tokens.hasPassword])
                         if !tokens.hasPassword {
                             step = .setPassword
                         }
@@ -270,9 +305,11 @@ struct LoginView: View {
                 case .password:
                     let tokens = try await api.loginWithPassword(phone: normalized, password: password)
                     try await auth.completeLogin(tokens: tokens)
+                    DominoAnalytics.capture("password_login_completed")
                 }
             } catch let apiError as APIError where apiError.code == "signup_full" {
                 errorMessage = apiError.message
+                signupFull = true
                 showWaitlist = true
             } catch {
                 errorMessage = error.localizedDescription
@@ -294,6 +331,7 @@ struct LoginView: View {
         }
         do {
             _ = try await api.joinWaitlist(email: email)
+            DominoAnalytics.capture("waitlist_joined", properties: ["referral_present": false])
             waitlistNotice = "you're on the list — we'll be in touch."
             waitlistEmail = ""
         } catch {

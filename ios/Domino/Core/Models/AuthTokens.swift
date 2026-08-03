@@ -18,6 +18,12 @@ struct OKResponse: Codable {
     let ok: Bool
 }
 
+struct SignupStatus: Codable {
+    let full: Bool
+    let limit: Int
+    let count: Int
+}
+
 struct LogoutResponse: Codable {
     let success: Bool
 }

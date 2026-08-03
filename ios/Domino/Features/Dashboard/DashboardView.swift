@@ -412,6 +412,7 @@ struct DashboardView: View {
                 if selectedBookmark?.id == bookmark.id {
                     selectedBookmark = BookmarkMapper.toBookmark(updated)
                 }
+                DominoAnalytics.capture("item_favorite_updated", properties: ["is_favorited": updated.isFavorited])
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -432,6 +433,7 @@ struct DashboardView: View {
                 if selectedBookmark?.id == bookmark.id {
                     selectedBookmark = BookmarkMapper.toBookmark(updated)
                 }
+                DominoAnalytics.capture("item_pin_updated", properties: ["is_pinned": updated.isPinned])
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -443,6 +445,7 @@ struct DashboardView: View {
         do {
             try await api.deleteItem(token: token, id: id)
             items.removeAll { $0.id == id }
+            DominoAnalytics.capture("item_deleted")
         } catch {
             errorMessage = error.localizedDescription
         }

@@ -14,8 +14,18 @@ enum AppConfig {
     static let phoneAccount = "domino_phone"
     static let appGroupID = "group.fyi.domino.app"
     /// Public Domino iMessage number — opens Messages via `sms:`.
-    static let imessagePhone = "+17868250042"
+    static let imessagePhone = "+14249441140"
     static let onboardingDefaultsKey = "domino_onboarding_v1"
+    /// Pre-auth v3 carousel (save number → links → weekly) before login.
+    static let firstRunOnboardingKey = "domino_first_run_onboarding_v3"
+
+    static let posthogProjectToken: String? = {
+        Bundle.main.object(forInfoDictionaryKey: "PostHogProjectToken") as? String
+    }()
+
+    static let posthogHost: String? = {
+        Bundle.main.object(forInfoDictionaryKey: "PostHogHost") as? String
+    }()
 
     static var imessageURL: URL? {
         URL(string: "sms:\(imessagePhone)")

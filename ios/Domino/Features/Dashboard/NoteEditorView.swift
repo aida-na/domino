@@ -320,6 +320,7 @@ struct NoteEditorView: View {
                 self.itemKind = item.inputType
                 if let topic = item.topic { self.folder = topic }
                 self.keyIdeas = item.keyIdeas
+                DominoAnalytics.capture("item_created", properties: ["item_type": item.inputType.rawValue])
             } else {
                 return nil
             }

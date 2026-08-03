@@ -104,7 +104,10 @@ def send_message(to: str, body: str, *, attachments: list[str] | None = None) ->
             "BLOOIO_API_KEY is not set — dev console fallback for %s",
             mask_phone(to),
         )
-        print(f"\n[DOMINO DEV] Message to {mask_phone(to)}: [redacted]\n", flush=True)
+        if settings.DEBUG:
+            print(f"\n[DOMINO DEV] Message to {mask_phone(to)}:\n{body}\n", flush=True)
+        else:
+            print(f"\n[DOMINO DEV] Message to {mask_phone(to)}: [redacted]\n", flush=True)
         return None
 
     # Omit from_number by default — Blooio auto-selects from the key's Channels pool.

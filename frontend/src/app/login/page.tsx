@@ -9,6 +9,7 @@ import { DominoBrandHero } from '@/features/domino/domino-brand-hero';
 import { DominoApiError, dominoApi } from '@/features/domino/domino-api';
 import { WaitlistModal } from '@/components/WaitlistModal';
 import { Button } from '@/components/ui/button';
+import posthog from 'posthog-js';
 
 type SignInMode = 'otp' | 'password';
 type OtpStep = 'phone' | 'code' | 'setPassword';
@@ -101,6 +102,7 @@ export default function DominoLoginPage() {
     setError(null);
     try {
       await dominoApi.requestOtp(phone.trim());
+      posthog.capture('otp_requested');
       setOtpStep('code');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
@@ -125,6 +127,7 @@ export default function DominoLoginPage() {
       })();
       const data = await dominoApi.verifyOtp(phone.trim(), code.trim(), ref);
       await loginWithToken(data.access_token);
+      posthog.capture('otp_verified', { has_password: data.has_password });
       try {
         localStorage.removeItem('domino_invite_ref');
       } catch {
@@ -181,6 +184,7 @@ export default function DominoLoginPage() {
     setError(null);
     try {
       await dominoApi.setPassword(token, newPassword, newPasswordConfirm);
+      posthog.capture('password_setup_completed');
       router.replace('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save password.');
@@ -201,6 +205,7 @@ export default function DominoLoginPage() {
     try {
       const data = await dominoApi.loginWithPassword(phone.trim(), password);
       await loginWithToken(data.access_token);
+      posthog.capture('password_login_completed');
       router.replace('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign-in failed.');

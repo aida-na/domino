@@ -25,8 +25,11 @@ export default function DominoLandingPage() {
 
   if (isLoading) {
     return (
-      <main className="min-h-screen flex items-center justify-center" style={{ background: '#E7E0D3' }}>
-        <span className="w-5 h-5 rounded-full border-2 border-[#B4520F] border-t-transparent animate-spin" />
+      <main className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
+        <span
+          className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin"
+          style={{ borderColor: 'var(--domino-accent)', borderTopColor: 'transparent' }}
+        />
       </main>
     );
   }
@@ -34,30 +37,30 @@ export default function DominoLandingPage() {
   return (
     <main
       className="h-dvh lowercase overflow-hidden leading-snug relative flex flex-col"
-      style={{ background: '#E7E0D3', color: '#1C1917' }}
+      style={{ background: 'var(--bg)', color: 'var(--ink)' }}
     >
       <DominoHeroPoster />
 
       <footer
         className="shrink-0 flex flex-col gap-2 px-4 py-3 md:px-6"
         style={{
-          background: '#E7E0D3',
-          borderTop: '1px solid rgba(28,25,23,.08)',
+          background: 'var(--bg)',
+          borderTop: '1px solid var(--hairline-soft)',
           paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))',
         }}
       >
         <div className="flex items-center justify-between">
-          <span className="text-xs" style={{ color: '#7A6F60' }}>
+          <span className="text-xs" style={{ color: 'var(--ink-4)' }}>
             © 2026 daily labs
           </span>
           <div className="flex items-center gap-4">
-            <Link href="/faq" className="text-xs transition-colors hover:opacity-80" style={{ color: '#7A6F60' }}>
+            <Link href="/faq" className="text-xs transition-colors hover:opacity-80" style={{ color: 'var(--ink-4)' }}>
               faq
             </Link>
-            <Link href="/privacy" className="text-xs transition-colors hover:opacity-80" style={{ color: '#7A6F60' }}>
+            <Link href="/privacy" className="text-xs transition-colors hover:opacity-80" style={{ color: 'var(--ink-4)' }}>
               privacy
             </Link>
-            <Link href="/terms" className="text-xs transition-colors hover:opacity-80" style={{ color: '#7A6F60' }}>
+            <Link href="/terms" className="text-xs transition-colors hover:opacity-80" style={{ color: 'var(--ink-4)' }}>
               terms
             </Link>
           </div>

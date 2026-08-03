@@ -15,6 +15,7 @@ import {
   markOnboardingDone,
 } from '@/features/domino/domino-onboarding';
 import { IcSearch, IcSort, IcX, IcStar, IcPin, IcShare, IcExt, IcPlus, IcClipboard, KindIcon } from '@/features/domino/domino-icons';
+import posthog from 'posthog-js';
 
 function useMagicLink(loginWithToken: (t: string) => Promise<void>) {
   const handled = useRef(false);
@@ -133,7 +134,11 @@ function AddSheet({ token, onClose, onAdd }: { token: string; onClose: () => voi
     if (!input.trim() || saving || savingRef.current) return;
     savingRef.current = true;
     setSaving(true);
-    try { const item = await dominoApi.createItem(token, input.trim()); onAdd(item); }
+    try {
+      const item = await dominoApi.createItem(token, input.trim());
+      posthog.capture('item_created', { item_type: item.input_type });
+      onAdd(item);
+    }
     catch (e) { console.error(e); savingRef.current = false; setSaving(false); }
   }
 
@@ -298,19 +303,25 @@ function SavedView() {
     if (!item) return;
     const next = !item.is_favorited;
     setRawItems(prev => prev.map(r => r.id === id ? { ...r, is_favorited: next } : r));
-    dominoApi.patchItem(token, id, { is_favorited: next }).catch(() => load());
+    dominoApi.patchItem(token, id, { is_favorited: next })
+      .then(() => posthog.capture('item_favorite_updated', { is_favorited: next }))
+      .catch(() => load());
   }
   function togglePin(id: string) {
     const item = rawItems.find(r => r.id === id);
     if (!item) return;
     const next = !item.is_pinned;
     setRawItems(prev => prev.map(r => r.id === id ? { ...r, is_pinned: next } : r));
-    dominoApi.patchItem(token, id, { is_pinned: next }).catch(() => load());
+    dominoApi.patchItem(token, id, { is_pinned: next })
+      .then(() => posthog.capture('item_pin_updated', { is_pinned: next }))
+      .catch(() => load());
   }
   function remove(id: string) {
     setRawItems(prev => prev.filter(r => r.id !== id));
     if (detail?.id === id) setDetail(null);
-    dominoApi.deleteItem(token, id).catch(() => load());
+    dominoApi.deleteItem(token, id)
+      .then(() => posthog.capture('item_deleted'))
+      .catch(() => load());
   }
 
   const todayCount = bookmarks.filter(b => b.days === 0).length;

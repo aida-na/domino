@@ -1,5 +1,6 @@
 """Domino auth endpoints — session tokens, magic link, OTP, and optional password."""
 
+import asyncio
 import hashlib
 import logging
 import secrets
@@ -163,6 +164,26 @@ def _send_message(to: str, body: str) -> None:
     """Send iMessage/SMS via Blooio. Falls back to console in dev."""
     from app.services.blooio import send_message
     send_message(to, body)
+
+
+OTP_SEND_UNAVAILABLE = (
+    "couldn't send your sign-in code — our iMessage line is temporarily offline. "
+    "try again in a few minutes or use password login."
+)
+OTP_SEND_FAILED = "couldn't send your sign-in code. try again shortly."
+
+
+async def _send_otp_message(phone: str, body: str) -> None:
+    """Send OTP synchronously so failures surface to the client."""
+    try:
+        await asyncio.to_thread(_send_message, phone, body)
+    except Exception as e:
+        from app.services.blooio import BlooioError
+
+        logger.exception("OTP send failed for phone ending %s: %s", phone[-4:], e)
+        if isinstance(e, BlooioError) and e.status_code == 503:
+            raise HTTPException(status_code=503, detail=OTP_SEND_UNAVAILABLE) from e
+        raise HTTPException(status_code=502, detail=OTP_SEND_FAILED) from e
 
 
 # Back-compat alias used by older call sites during migration
@@ -337,9 +358,12 @@ async def request_magic_link(
         # Still 200 — do not reveal whether the account exists
         logger.info("magic-link: no account for phone ending %s — skipped send", phone[-4:])
         return {"ok": True}
+    dev_link: str | None = None
     try:
         session_token, _ = await create_session_for_phone(phone, db)
         link = build_magic_link(session_token)
+        if settings.DEBUG and settings.is_development:
+            dev_link = link
         background_tasks.add_task(
             _send_message_safe,
             phone,
@@ -348,7 +372,10 @@ async def request_magic_link(
         )
     except Exception as e:
         logger.exception("magic-link prepare failed for phone ending %s: %s", phone[-4:], e)
-    return {"ok": True}
+    payload: dict = {"ok": True}
+    if dev_link:
+        payload["dev_link"] = dev_link
+    return payload
 
 
 def _serialize_me(user: DominoUser) -> dict:
@@ -463,25 +490,25 @@ class OtpRequestBody(BaseModel):
 async def request_otp(
     request: Request,
     body: OtpRequestBody,
-    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     """Send a 6-digit sign-in code via Blooio. User is created on first successful verify."""
     phone = normalize_domino_phone(body.phone)
     code = f"{secrets.randbelow(900_000) + 100_000:06d}"
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=OTP_TTL_MINUTES)
+    message = f"your domino sign-in code: {code}\n\nit expires in {OTP_TTL_MINUTES} minutes."
+
+    await _send_otp_message(phone, message)
 
     otp = DominoOTP(phone=phone, code=code, expires_at=expires_at)
     db.add(otp)
     await db.commit()
 
-    background_tasks.add_task(
-        _send_message_safe,
-        phone,
-        f"your domino sign-in code: {code}\n\nit expires in {OTP_TTL_MINUTES} minutes.",
-        context="OTP",
-    )
-    return {"ok": True}
+    payload: dict = {"ok": True}
+    # Local QA only — never enabled in staging/production deploys.
+    if settings.DEBUG and settings.is_development:
+        payload["dev_code"] = code
+    return payload
 
 
 class OtpVerifyBody(BaseModel):

@@ -9,6 +9,7 @@ import { useDominoTheme } from '@/features/domino/domino-theme';
 import { dominoApi, type DominoMeResponse } from '@/features/domino/domino-api';
 import { toBookmark, cardColor, type Bookmark } from '@/features/domino/domino-utils';
 import { IcBookmark, IcStar, IcShare, IcCompass, IcChevron, IcX } from '@/features/domino/domino-icons';
+import posthog from 'posthog-js';
 
 const TIMEZONES = [
   'America/Los_Angeles',
@@ -318,6 +319,7 @@ function MeContent() {
       a.download = `domino-export-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
+      posthog.capture('account_export_completed');
       showToast('export downloaded');
       setSheet(null);
     }).catch(() => showToast('export failed'));
@@ -334,6 +336,7 @@ function MeContent() {
     }
     try {
       await dominoApi.deleteAccount(sessionToken, password);
+      posthog.capture('account_deleted');
       showToast('account deleted');
       await logout();
     } catch (e) {

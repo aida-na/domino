@@ -3,12 +3,13 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { dominoApi } from '@/features/domino/domino-api';
 import { IcChevron, IcX } from '@/features/domino/domino-icons';
+import posthog from 'posthog-js';
 
 const STORAGE_KEY = 'domino_onboarding_v1';
 
 /** Public Domino iMessage / SMS number (override with NEXT_PUBLIC_DOMINO_IMESSAGE_PHONE). */
 const DOMINO_IMESSAGE_PHONE = (
-  process.env.NEXT_PUBLIC_DOMINO_IMESSAGE_PHONE || '+17868250042'
+  process.env.NEXT_PUBLIC_DOMINO_IMESSAGE_PHONE || '+14249441140'
 ).replace(/[\s()-]/g, '');
 
 export function openDominoIMessage(): void {
@@ -256,6 +257,7 @@ export function DominoOnboardingSheet({
     setError(null);
     try {
       const me = await dominoApi.updateMe(token, { email: trimmed, digest_opted_out: false });
+      posthog.capture('digest_email_saved');
       onEmailSaved?.(me.email ?? trimmed);
       finish();
     } catch (e) {

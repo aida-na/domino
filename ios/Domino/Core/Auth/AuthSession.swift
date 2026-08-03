@@ -92,6 +92,7 @@ final class AuthSession {
         sessionToken = token
         phone = profile.phone
         hasPassword = profile.hasPassword ?? false
+        DominoAnalytics.identify(phone: profile.phone)
     }
 
     private func clearSession() {
@@ -100,6 +101,7 @@ final class AuthSession {
         hasPassword = nil
         profile = nil
         pendingPasswordSetup = false
+        DominoAnalytics.reset()
     }
 
     private func persist(token: String, phone: String) throws {

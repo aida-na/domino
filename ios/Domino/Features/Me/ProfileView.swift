@@ -491,6 +491,7 @@ struct ExportSavesSheet: View {
                 ?? scene.windows.first?.rootViewController
             presenter?.present(av, animated: true)
             notice = "export ready"
+            DominoAnalytics.capture("account_export_completed")
         } catch {
             notice = "couldn't export"
         }
@@ -578,6 +579,7 @@ struct DeleteAccountSheet: View {
                 token: token,
                 password: auth.profile?.hasPassword == true ? password : nil
             )
+            DominoAnalytics.capture("account_deleted")
             await auth.logout()
             dismiss()
         } catch let apiError as APIError {

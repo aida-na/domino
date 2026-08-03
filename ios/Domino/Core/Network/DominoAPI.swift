@@ -5,6 +5,10 @@ struct DominoAPI {
 
     // MARK: - Auth
 
+    func getSignupStatus() async throws -> SignupStatus {
+        try await client.request("GET", path: "auth/signup-status")
+    }
+
     func requestOTP(phone: String) async throws -> OKResponse {
         try await client.request("POST", path: "auth/otp/request", body: PhoneRequest(phone: phone))
     }

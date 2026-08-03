@@ -91,6 +91,7 @@ struct ChatView: View {
 
         input = ""
         messages.append(ChatMessage(role: .user, text: text, sources: nil))
+        DominoAnalytics.capture("chat_question_sent")
         isSending = true
         defer { isSending = false }
 

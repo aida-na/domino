@@ -75,12 +75,14 @@ chmod +x scripts/testflight.sh
 
 Upload IPA via Transporter (or the `altool` command printed by the script). Add internal testers.
 
-**Device QA checklist**
+**Device QA checklist** — full local runbook: [`docs/LOCAL_QA.md`](../../docs/LOCAL_QA.md)
 
 - [ ] OTP / password / magic-link sign-in
 - [ ] Magic link opens app (universal link), not only Safari
 - [ ] Dashboard load, star/delete, add item
 - [ ] Share extension: Safari → Share → save to domino (after main-app sign-in)
+- [ ] Export JSON (profile → export)
+- [ ] Delete account (throwaway number; profile → delete account)
 - [ ] Sign out / sign back in
 
 ---
@@ -123,6 +125,12 @@ domino://dashboard?token=…).
 ```
 
 Create the review account before submitting and fill in the placeholders above.
+
+```bash
+# Production DB via Cloud SQL Auth Proxy (see docs/LOCAL_QA.md)
+python backend/scripts/local_qa.py setup-review-account '+1YOUR_REVIEW_PHONE' 'YourReviewPass1!' \
+  --frontend-url https://www.domino.fyi --reseed
+```
 
 ---
 

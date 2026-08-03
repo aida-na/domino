@@ -4,6 +4,7 @@ import { useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { X } from "lucide-react"
 import { motion } from "framer-motion"
+import posthog from "posthog-js"
 
 function WaitlistModalInner({
   onClose,
@@ -40,6 +41,7 @@ function WaitlistModalInner({
             : detail?.message || "something went wrong"
         throw new Error(msg)
       }
+      posthog.capture("waitlist_joined", { referral_present: Boolean(refCode) })
       setStatus("success")
       setEmail("")
     } catch (err) {

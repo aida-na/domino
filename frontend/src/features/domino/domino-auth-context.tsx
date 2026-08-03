@@ -1,7 +1,16 @@
 'use client';
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import posthog from 'posthog-js';
 import { dominoApi } from './domino-api';
+
+function identifyUser(phone: string) {
+  posthog.identify(phone);
+}
+
+function resetUser() {
+  posthog.reset();
+}
 
 const SESSION_KEY = 'domino_session';
 const PHONE_KEY = 'domino_phone';
@@ -40,13 +49,17 @@ export function DominoAuthProvider({ children }: { children: React.ReactNode }) 
 
       dominoApi
         .getMe(storedToken)
-        .then((me) => setHasPassword(me.has_password ?? false))
+        .then((me) => {
+          setHasPassword(me.has_password ?? false);
+          identifyUser(me.phone);
+        })
         .catch(() => {
           localStorage.removeItem(SESSION_KEY);
           localStorage.removeItem(PHONE_KEY);
           setSessionToken(null);
           setPhone(null);
           setHasPassword(null);
+          resetUser();
         });
     });
   }, []);
@@ -67,6 +80,7 @@ export function DominoAuthProvider({ children }: { children: React.ReactNode }) 
     setSessionToken(token);
     setPhone(me.phone);
     setHasPassword(me.has_password ?? false);
+    identifyUser(me.phone);
   }, []);
 
   const logout = useCallback(async () => {
@@ -80,6 +94,7 @@ export function DominoAuthProvider({ children }: { children: React.ReactNode }) 
     setSessionToken(null);
     setPhone(null);
     setHasPassword(null);
+    resetUser();
   }, [sessionToken]);
 
   return (
