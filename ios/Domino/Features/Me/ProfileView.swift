@@ -336,12 +336,12 @@ struct EditProfileSheet: View {
                 email: email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     ? nil
                     : email.trimmingCharacters(in: .whitespacesAndNewlines),
-                displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    ? nil
-                    : displayName.trimmingCharacters(in: .whitespacesAndNewlines),
                 timezone: timezone,
                 digestTime: digestTime,
-                discoverOptIn: discoverOptIn
+                discoverOptIn: discoverOptIn,
+                displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    ? nil
+                    : displayName.trimmingCharacters(in: .whitespacesAndNewlines)
             ))
             if !password.isEmpty {
                 guard password.count >= 8 else { throw APIError(message: "password must be at least 8 characters") }
