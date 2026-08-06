@@ -9,10 +9,11 @@ configFiles:
   Release: Config/Release.xcconfig
 settings:
   SWIFT_VERSION: "5.9"
+  SWIFT_ENABLE_EXPLICIT_MODULES: "NO"
 packages:
   PostHog:
     url: https://github.com/PostHog/posthog-ios
-    from: 3.59.3
+    from: 3.69.0
 targets:
   Domino:
     type: application
@@ -29,7 +30,7 @@ targets:
       CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: "YES"
       ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       TARGETED_DEVICE_FAMILY: "1,2"
-      CURRENT_PROJECT_VERSION: 5
+      CURRENT_PROJECT_VERSION: 8
       MARKETING_VERSION: 1.0
     entitlements:
       path: Domino/Resources/Domino.entitlements
@@ -79,6 +80,9 @@ targets:
     sources:
       - path: DominoShare
       - path: Domino/Core
+        excludes:
+          - Analytics/**
+          - Auth/AuthSession.swift
       - path: Domino/App/AppConfig.swift
       - path: Domino/Design/DominoColors.swift
       - path: Domino/Design/DominoTypography.swift
@@ -88,7 +92,7 @@ targets:
       CODE_SIGN_ENTITLEMENTS: DominoShare/DominoShare.entitlements
       CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: "YES"
       SKIP_INSTALL: YES
-      CURRENT_PROJECT_VERSION: 5
+      CURRENT_PROJECT_VERSION: 8
       MARKETING_VERSION: 1.0
     entitlements:
       path: DominoShare/DominoShare.entitlements

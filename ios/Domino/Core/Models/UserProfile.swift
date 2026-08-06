@@ -9,6 +9,8 @@ struct UserProfile: Codable, Equatable {
     let hasPassword: Bool?
     let inviteCode: String?
     let inviteURL: String?
+    let discoverOptIn: Bool?
+    let displayName: String?
 
     enum CodingKeys: String, CodingKey {
         case phone, email, timezone
@@ -17,6 +19,8 @@ struct UserProfile: Codable, Equatable {
         case hasPassword = "has_password"
         case inviteCode = "invite_code"
         case inviteURL = "invite_url"
+        case discoverOptIn = "discover_opt_in"
+        case displayName = "display_name"
     }
 }
 
@@ -25,10 +29,14 @@ struct ProfileUpdate: Encodable {
     var timezone: String?
     var digestTime: String?
     var digestOptedOut: Bool?
+    var discoverOptIn: Bool?
+    var displayName: String?
 
     enum CodingKeys: String, CodingKey {
         case email, timezone
         case digestTime = "digest_time"
         case digestOptedOut = "digest_opted_out"
+        case discoverOptIn = "discover_opt_in"
+        case displayName = "display_name"
     }
 }

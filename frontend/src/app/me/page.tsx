@@ -6,7 +6,7 @@ import { DominoAppShell } from '@/features/domino/domino-app-shell';
 import { DominoProtectedRoute } from '@/features/domino/domino-protected-route';
 import { useDominoAuth } from '@/features/domino/domino-auth-context';
 import { useDominoTheme } from '@/features/domino/domino-theme';
-import { dominoApi, type DominoMeResponse } from '@/features/domino/domino-api';
+import { dominoApi, type DominoFriend, type DominoFriendsPendingResponse, type DominoMeResponse } from '@/features/domino/domino-api';
 import { toBookmark, cardColor, type Bookmark } from '@/features/domino/domino-utils';
 import { IcBookmark, IcStar, IcShare, IcCompass, IcChevron, IcX } from '@/features/domino/domino-icons';
 import posthog from 'posthog-js';
@@ -27,7 +27,7 @@ const TIMEZONES = [
   'UTC',
 ];
 
-type Sheet = 'edit' | 'export' | 'appearance' | null;
+type Sheet = 'edit' | 'export' | 'appearance' | 'friends' | null;
 
 function fieldStyle(): CSSProperties {
   return {
@@ -73,6 +73,146 @@ function SheetShell({ title, onClose, children }: { title: string; onClose: () =
   );
 }
 
+function FriendsSheet({
+  token,
+  onClose,
+}: {
+  token: string;
+  onClose: () => void;
+}) {
+  const [friends, setFriends] = useState<DominoFriend[]>([]);
+  const [pending, setPending] = useState<DominoFriendsPendingResponse | null>(null);
+  const [inviteCode, setInviteCode] = useState('');
+  const [phone, setPhone] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function reload() {
+    setLoading(true);
+    try {
+      const [f, p] = await Promise.all([
+        dominoApi.getFriends(token),
+        dominoApi.getFriendsPending(token),
+      ]);
+      setFriends(f.friends);
+      setPending(p);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'couldn’t load friends');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const [f, p] = await Promise.all([
+          dominoApi.getFriends(token),
+          dominoApi.getFriendsPending(token),
+        ]);
+        if (!cancelled) {
+          setFriends(f.friends);
+          setPending(p);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : 'couldn’t load friends');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [token]);
+
+  async function sendRequest() {
+    setError(null);
+    try {
+      if (inviteCode.trim()) {
+        await dominoApi.sendFriendRequest(token, { invite_code: inviteCode.trim() });
+        setInviteCode('');
+      } else if (phone.trim()) {
+        await dominoApi.sendFriendRequest(token, { phone: phone.trim() });
+        setPhone('');
+      } else {
+        setError('enter a phone number or invite code');
+        return;
+      }
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'request failed');
+    }
+  }
+
+  return (
+    <SheetShell title="friends" onClose={onClose}>
+      {loading ? (
+        <div style={{ color: 'var(--ink-3)', fontSize: 'var(--dn-text-base)' }}>loading…</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <label style={labelStyle()}>add by invite code</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input style={fieldStyle()} value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} placeholder="abc12345" />
+              <button type="button" className="dn-chip" style={{ height: 44, padding: '0 16px' }} onClick={() => { void sendRequest(); }}>add</button>
+            </div>
+          </div>
+          <div>
+            <label style={labelStyle()}>add by phone</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input style={fieldStyle()} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1…" />
+              <button type="button" className="dn-chip" style={{ height: 44, padding: '0 16px' }} onClick={() => { void sendRequest(); }}>add</button>
+            </div>
+          </div>
+
+          {pending && pending.incoming.length > 0 && (
+            <div>
+              <div style={labelStyle()}>incoming requests</div>
+              {pending.incoming.map((req) => (
+                <div key={req.request_id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ flex: 1, fontSize: 'var(--dn-text-base)' }}>{req.user.display_name}</span>
+                  <button type="button" className="dn-chip" style={{ height: 34 }} onClick={() => { void dominoApi.acceptFriendRequest(token, req.request_id).then(reload); }}>accept</button>
+                  <button type="button" className="dn-chip" style={{ height: 34 }} onClick={() => { void dominoApi.declineFriendRequest(token, req.request_id).then(reload); }}>decline</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {pending && pending.outgoing.length > 0 && (
+            <div>
+              <div style={labelStyle()}>pending</div>
+              {pending.outgoing.map((req) => (
+                <div key={req.request_id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ flex: 1, fontSize: 'var(--dn-text-base)', color: 'var(--ink-3)' }}>{req.user.display_name}</span>
+                  <button type="button" className="dn-chip" style={{ height: 34 }} onClick={() => { void dominoApi.declineFriendRequest(token, req.request_id).then(reload); }}>cancel</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div>
+            <div style={labelStyle()}>your friends ({friends.length})</div>
+            {friends.length === 0 ? (
+              <p style={{ fontSize: 'var(--dn-text-sm)', color: 'var(--ink-3)', margin: 0 }}>No friends yet — add someone by invite code or phone.</p>
+            ) : (
+              friends.map((f) => (
+                <div key={f.friendship_id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ flex: 1, fontSize: 'var(--dn-text-base)' }}>{f.display_name}</span>
+                  <button type="button" className="dn-chip" style={{ height: 34, color: 'oklch(0.55 0.18 27)' }} onClick={() => { void dominoApi.removeFriend(token, f.friendship_id).then(reload); }}>remove</button>
+                </div>
+              ))
+            )}
+          </div>
+
+          {error && <div style={{ fontSize: 'var(--dn-text-sm)', color: 'oklch(0.55 0.18 27)' }}>{error}</div>}
+        </div>
+      )}
+    </SheetShell>
+  );
+}
+
 function EditProfileSheet({
   token,
   profile,
@@ -88,8 +228,10 @@ function EditProfileSheet({
 }) {
   const { refreshProfile } = useDominoAuth();
   const [email, setEmail] = useState(profile.email ?? '');
+  const [displayName, setDisplayName] = useState(profile.display_name ?? '');
   const [timezone, setTimezone] = useState(profile.timezone);
   const [digestTime, setDigestTime] = useState(profile.digest_time?.slice(0, 5) || '08:00');
+  const [discoverOptIn, setDiscoverOptIn] = useState(Boolean(profile.discover_opt_in));
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [saving, setSaving] = useState(false);
@@ -103,8 +245,10 @@ function EditProfileSheet({
     try {
       const me = await dominoApi.updateMe(token, {
         email: email.trim() || null,
+        display_name: displayName.trim() || null,
         timezone,
         digest_time: digestTime,
+        discover_opt_in: discoverOptIn,
       });
       if (password) {
         if (password.length < 8) throw new Error('password must be at least 8 characters');
@@ -133,6 +277,16 @@ function EditProfileSheet({
           </div>
         </div>
         <div>
+          <label style={labelStyle()}>display name (for friends)</label>
+          <input
+            style={fieldStyle()}
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="optional"
+            maxLength={32}
+          />
+        </div>
+        <div>
           <label style={labelStyle()}>email (weekly digest)</label>
           <input
             style={fieldStyle()}
@@ -159,6 +313,24 @@ function EditProfileSheet({
             value={digestTime}
             onChange={(e) => setDigestTime(e.target.value)}
           />
+        </div>
+        <div style={{ borderTop: '1px solid var(--hairline-soft)', paddingTop: 14 }}>
+          <label style={{ ...labelStyle(), display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={discoverOptIn}
+              onChange={(e) => setDiscoverOptIn(e.target.checked)}
+              style={{ marginTop: 3 }}
+            />
+            <span>
+              <span style={{ display: 'block', color: 'var(--ink)', fontWeight: 600, marginBottom: 4 }}>
+                share saves anonymously in discover
+              </span>
+              <span style={{ fontWeight: 400, lineHeight: 1.45 }}>
+                Only link URLs and titles — never notes, images, or who saved what.
+              </span>
+            </span>
+          </label>
         </div>
         <div style={{ borderTop: '1px solid var(--hairline-soft)', paddingTop: 14 }}>
           <label style={labelStyle()}>{hasPassword ? 'change password' : 'set a password'}</label>
@@ -363,6 +535,12 @@ function MeContent() {
       onClick: () => router.push('/dashboard?sort=starred'),
     },
     {
+      icon: <IcCompass size={16} />,
+      label: 'Friends',
+      detail: profile?.discover_opt_in ? 'manage' : '',
+      onClick: () => setSheet('friends'),
+    },
+    {
       icon: <IcShare size={16} />,
       label: 'Share & export',
       detail: '',
@@ -540,6 +718,10 @@ function MeContent() {
         }}>
           {toast}
         </div>
+      )}
+
+      {sheet === 'friends' && sessionToken && (
+        <FriendsSheet token={sessionToken} onClose={() => setSheet(null)} />
       )}
 
       {sheet === 'edit' && profile && sessionToken && (

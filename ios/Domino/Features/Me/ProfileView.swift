@@ -23,6 +23,7 @@ struct ProfileView: View {
     @State private var isSigningOut = false
     @State private var showEdit = false
     @State private var showInvite = false
+    @State private var showFriends = false
     @State private var showExport = false
     @State private var showDeleteAccount = false
 
@@ -77,6 +78,9 @@ struct ProfileView: View {
             .sheet(isPresented: $showInvite) {
                 InviteShareSheet(inviteURL: auth.profile?.inviteURL)
             }
+            .sheet(isPresented: $showFriends) {
+                FriendsSheet()
+            }
             .sheet(isPresented: $showExport) {
                 ExportSavesSheet(token: auth.sessionToken)
             }
@@ -113,6 +117,11 @@ struct ProfileView: View {
         HStack(spacing: 10) {
             Button { showEdit = true } label: {
                 Label("edit", systemImage: "pencil")
+            }
+            .buttonStyle(SecondaryPillButtonStyle())
+
+            Button { showFriends = true } label: {
+                Label("friends", systemImage: "person.2")
             }
             .buttonStyle(SecondaryPillButtonStyle())
 
@@ -236,8 +245,10 @@ struct EditProfileSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var email = ""
+    @State private var displayName = ""
     @State private var timezone = "America/Los_Angeles"
     @State private var digestTime = "08:00"
+    @State private var discoverOptIn = false
     @State private var password = ""
     @State private var passwordConfirm = ""
     @State private var isSaving = false
@@ -252,6 +263,7 @@ struct EditProfileSheet: View {
                         Text(auth.phone ?? "")
                             .foregroundStyle(DominoColors.ink3)
                     }
+                    TextField("display name (for friends)", text: $displayName)
                     TextField("email (weekly digest)", text: $email)
                         .textContentType(.emailAddress)
                         .keyboardType(.emailAddress)
@@ -267,6 +279,13 @@ struct EditProfileSheet: View {
                         ),
                         displayedComponents: .hourAndMinute
                     )
+                }
+
+                Section("discover") {
+                    Toggle("share saves anonymously", isOn: $discoverOptIn)
+                    Text("Only link URLs and titles — never notes or who saved what.")
+                        .font(.footnote)
+                        .foregroundStyle(DominoColors.ink3)
                 }
 
                 Section(auth.hasPassword == true ? "change password" : "set password") {
@@ -299,8 +318,10 @@ struct EditProfileSheet: View {
             }
             .onAppear {
                 email = auth.profile?.email ?? ""
+                displayName = auth.profile?.displayName ?? ""
                 timezone = auth.profile?.timezone ?? TimeZone.current.identifier
                 digestTime = String((auth.profile?.digestTime ?? "08:00").prefix(5))
+                discoverOptIn = auth.profile?.discoverOptIn ?? false
             }
         }
     }
@@ -315,8 +336,12 @@ struct EditProfileSheet: View {
                 email: email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     ? nil
                     : email.trimmingCharacters(in: .whitespacesAndNewlines),
+                displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    ? nil
+                    : displayName.trimmingCharacters(in: .whitespacesAndNewlines),
                 timezone: timezone,
-                digestTime: digestTime
+                digestTime: digestTime,
+                discoverOptIn: discoverOptIn
             ))
             if !password.isEmpty {
                 guard password.count >= 8 else { throw APIError(message: "password must be at least 8 characters") }
@@ -587,6 +612,135 @@ struct DeleteAccountSheet: View {
         } catch {
             errorMessage = "couldn't delete account"
         }
+    }
+}
+
+struct FriendsSheet: View {
+    @Environment(AuthSession.self) private var auth
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var friends: [DominoFriend] = []
+    @State private var pending: FriendsPendingResponse?
+    @State private var inviteCode = ""
+    @State private var phone = ""
+    @State private var isLoading = true
+    @State private var errorMessage: String?
+
+    private let api = DominoAPI()
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("add friend") {
+                    HStack {
+                        TextField("invite code", text: $inviteCode)
+                            .textInputAutocapitalization(.never)
+                        Button("add") { Task { await sendRequest(useInvite: true) } }
+                    }
+                    HStack {
+                        TextField("phone", text: $phone)
+                            .keyboardType(.phonePad)
+                        Button("add") { Task { await sendRequest(useInvite: false) } }
+                    }
+                }
+
+                if let pending, !pending.incoming.isEmpty {
+                    Section("incoming") {
+                        ForEach(pending.incoming) { req in
+                            HStack {
+                                Text(req.user.displayName)
+                                Spacer()
+                                Button("accept") { Task { await accept(req.requestId) } }
+                                Button("decline") { Task { await decline(req.requestId) } }
+                            }
+                        }
+                    }
+                }
+
+                Section("friends (\(friends.count))") {
+                    if friends.isEmpty {
+                        Text("No friends yet")
+                            .foregroundStyle(DominoColors.ink3)
+                    } else {
+                        ForEach(friends) { friend in
+                            HStack {
+                                Text(friend.displayName)
+                                Spacer()
+                                Button("remove", role: .destructive) {
+                                    Task { await remove(friend.friendshipId) }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if let errorMessage {
+                    Section { Text(errorMessage).foregroundStyle(.red) }
+                }
+            }
+            .navigationTitle("friends")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    DominoCloseButton { dismiss() }
+                }
+            }
+            .task { await reload() }
+            .refreshable { await reload() }
+        }
+    }
+
+    private func reload() async {
+        guard let token = auth.sessionToken else { return }
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            async let f = api.getFriends(token: token)
+            async let p = api.getFriendsPending(token: token)
+            friends = try await f.friends
+            pending = try await p
+        } catch let apiError as APIError {
+            errorMessage = apiError.message
+        } catch {
+            errorMessage = "couldn't load friends"
+        }
+    }
+
+    private func sendRequest(useInvite: Bool) async {
+        guard let token = auth.sessionToken else { return }
+        errorMessage = nil
+        do {
+            let body = FriendRequestBody(
+                phone: useInvite ? nil : phone,
+                inviteCode: useInvite ? inviteCode : nil
+            )
+            _ = try await api.sendFriendRequest(token: token, body: body)
+            inviteCode = ""
+            phone = ""
+            await reload()
+        } catch let apiError as APIError {
+            errorMessage = apiError.message
+        } catch {
+            errorMessage = "request failed"
+        }
+    }
+
+    private func accept(_ id: String) async {
+        guard let token = auth.sessionToken else { return }
+        try? await api.acceptFriendRequest(token: token, requestId: id)
+        await reload()
+    }
+
+    private func decline(_ id: String) async {
+        guard let token = auth.sessionToken else { return }
+        try? await api.declineFriendRequest(token: token, requestId: id)
+        await reload()
+    }
+
+    private func remove(_ id: String) async {
+        guard let token = auth.sessionToken else { return }
+        try? await api.removeFriend(token: token, friendshipId: id)
+        await reload()
     }
 }
 

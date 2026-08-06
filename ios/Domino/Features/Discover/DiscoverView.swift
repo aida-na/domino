@@ -4,6 +4,9 @@ struct DiscoverView: View {
     @Environment(AuthSession.self) private var auth
     @Environment(AppNavigation.self) private var nav
     @State private var items: [Item] = []
+    @State private var discoverStatus: DiscoverStatusResponse?
+    @State private var similarTrending: DiscoverSimilarResponse?
+    @State private var friendsTrending: DiscoverFriendsResponse?
     @State private var isLoading = true
     @State private var selectedBookmark: Bookmark?
     @State private var showNoteEditor = false
@@ -50,9 +53,27 @@ struct DiscoverView: View {
 
                     if isLoading {
                         ProgressView().frame(maxWidth: .infinity).padding(.top, 40)
-                    } else if items.isEmpty {
-                        emptyState
                     } else {
+                        if similarTrending?.optInRequired == true || friendsTrending?.optInRequired == true {
+                            optInBanner
+                        }
+
+                        trendingSection(
+                            title: "trending with similar taste",
+                            meta: similarTrending.map { "\($0.items.count) links" } ?? "",
+                            items: similarTrending?.items ?? [],
+                            countLabel: { "\($0) people with similar taste" },
+                            empty: similarEmptyMessage
+                        )
+
+                        trendingSection(
+                            title: "trending among friends",
+                            meta: friendsTrending.map { "\($0.friendCount) friends" } ?? "",
+                            items: friendsTrending?.items ?? [],
+                            countLabel: { n in n == 1 ? "1 friend saved this" : "\(n) friends saved this" },
+                            empty: friendsEmptyMessage
+                        )
+
                         if !topics.isEmpty {
                             section(title: "my collections", meta: "\(topics.count) folders") {
                                 ScrollView(.horizontal, showsIndicators: false) {
@@ -126,6 +147,10 @@ struct DiscoverView: View {
                                 }
                             }
                         }
+
+                        if items.isEmpty && (similarTrending?.items.isEmpty ?? true) && (friendsTrending?.items.isEmpty ?? true) {
+                            emptyState
+                        }
                     }
                 }
                 .padding(.horizontal, 20)
@@ -175,6 +200,93 @@ struct DiscoverView: View {
         }
     }
 
+    private var optInBanner: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("opt in to see trending saves")
+                .font(.dominoBody(15, weight: .semibold))
+            Text("Share link URLs anonymously (title + URL only) in profile settings.")
+                .font(.dominoBody(13))
+                .foregroundStyle(DominoColors.ink3)
+            Button { showProfile = true } label: {
+                Text("open settings")
+                    .font(.dominoBody(13, weight: .semibold))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(DominoColors.ink)
+                    .foregroundStyle(DominoColors.bg)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(DominoColors.folderTint("Culture"))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var similarEmptyMessage: String {
+        guard discoverStatus?.optIn == true else { return "Turn on discover sharing in profile settings." }
+        guard discoverStatus?.tasteReady == true else { return "Save a few more links first — we need at least 5 saves to match your taste." }
+        return "Nothing trending yet this week."
+    }
+
+    private var friendsEmptyMessage: String {
+        guard discoverStatus?.optIn == true else { return "Turn on discover sharing in profile settings." }
+        guard (discoverStatus?.friendCount ?? 0) > 0 else { return "Add friends in profile settings." }
+        return "No friend saves this week yet."
+    }
+
+    private func trendingSection(
+        title: String,
+        meta: String,
+        items: [DiscoverTrendItem],
+        countLabel: (Int) -> String,
+        empty: String
+    ) -> some View {
+        section(title: title, meta: meta.isEmpty ? " " : meta) {
+            if items.isEmpty {
+                Text(empty)
+                    .font(.dominoBody(13))
+                    .foregroundStyle(DominoColors.ink3)
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(DominoColors.paper)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(items) { item in
+                        if let link = URL(string: item.url) {
+                            Link(destination: link) {
+                                HStack(alignment: .top, spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(item.title)
+                                            .font(.dominoDisplay(16, weight: .semibold))
+                                            .foregroundStyle(DominoColors.ink)
+                                            .multilineTextAlignment(.leading)
+                                            .lineLimit(2)
+                                        Text(countLabel(item.saveCount))
+                                            .font(.dominoBody(12))
+                                            .foregroundStyle(DominoColors.ink3)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "arrow.up.right")
+                                        .font(.caption)
+                                        .foregroundStyle(DominoColors.ink4)
+                                }
+                                .padding(14)
+                            }
+                            if item.id != items.last?.id {
+                                Divider().padding(.leading, 14)
+                            }
+                        }
+                    }
+                }
+                .background(DominoColors.paper)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+        }
+    }
+
     private func section<Content: View>(title: String, meta: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -215,7 +327,14 @@ struct DiscoverView: View {
     private func load() async {
         guard let token = auth.sessionToken else { return }
         isLoading = items.isEmpty
-        items = (try? await api.getItems(token: token, limit: 500)) ?? []
+        async let fetchedItems = api.getItems(token: token, limit: 500)
+        async let status = api.getDiscoverStatus(token: token)
+        async let similar = api.getSimilarTasteTrending(token: token)
+        async let friends = api.getFriendsTrending(token: token)
+        items = (try? await fetchedItems) ?? []
+        discoverStatus = try? await status
+        similarTrending = try? await similar
+        friendsTrending = try? await friends
         isLoading = false
     }
 

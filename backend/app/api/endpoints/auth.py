@@ -390,6 +390,8 @@ def _serialize_me(user: DominoUser) -> dict:
         "has_password": bool(user.password_hash),
         "invite_code": code,
         "invite_url": f"{base}/login?ref={code}" if code else None,
+        "discover_opt_in": bool(user.discover_opt_in),
+        "display_name": user.display_name,
     }
 
 
@@ -407,6 +409,8 @@ class UpdateMeBody(BaseModel):
     timezone: str | None = Field(default=None, min_length=1, max_length=64)
     digest_time: str | None = Field(default=None, min_length=4, max_length=5)
     digest_opted_out: bool | None = None
+    discover_opt_in: bool | None = None
+    display_name: str | None = Field(default=None, max_length=32)
 
     @field_validator("email")
     @classmethod
@@ -454,6 +458,21 @@ async def update_me(
         current_user.digest_time = body.digest_time
     if "digest_opted_out" in fields and body.digest_opted_out is not None:
         current_user.digest_opted_out = body.digest_opted_out
+    if "display_name" in fields:
+        name = (body.display_name or "").strip()
+        current_user.display_name = name[:32] if name else None
+    if "discover_opt_in" in fields and body.discover_opt_in is not None:
+        from app.services.shared_saves import backfill_shared_saves, clear_shared_saves
+
+        prev = bool(current_user.discover_opt_in)
+        current_user.discover_opt_in = body.discover_opt_in
+        if body.discover_opt_in and not prev:
+            await backfill_shared_saves(db, current_user)
+            from app.services.taste_profile import build_taste_profile
+
+            await build_taste_profile(current_user.phone, db)
+        elif not body.discover_opt_in and prev:
+            await clear_shared_saves(db, current_user.phone)
     await db.commit()
     await db.refresh(current_user)
     await ensure_invite_code(current_user, db)

@@ -9,6 +9,8 @@ export interface DominoMeResponse {
   has_password?: boolean;
   invite_code?: string | null;
   invite_url?: string | null;
+  discover_opt_in?: boolean;
+  display_name?: string | null;
 }
 
 export interface DominoMeUpdate {
@@ -16,6 +18,8 @@ export interface DominoMeUpdate {
   timezone?: string;
   digest_time?: string;
   digest_opted_out?: boolean;
+  discover_opt_in?: boolean;
+  display_name?: string | null;
 }
 
 export interface DominoAuthTokens {
@@ -45,6 +49,50 @@ export interface DominoItem {
 export interface ChatResponse {
   answer: string;
   sources: { id: string; summary: string; created_at: string | null }[];
+}
+
+export interface DiscoverTrendItem {
+  url: string;
+  title: string;
+  save_count: number;
+  topic?: string | null;
+}
+
+export interface DiscoverSimilarResponse {
+  items: DiscoverTrendItem[];
+  cohort_label: string;
+  opt_in_required?: boolean;
+}
+
+export interface DiscoverFriendsResponse {
+  items: DiscoverTrendItem[];
+  friend_count: number;
+  opt_in_required?: boolean;
+}
+
+export interface DiscoverStatusResponse {
+  opt_in: boolean;
+  taste_ready: boolean;
+  item_count: number;
+  friend_count: number;
+  has_data: boolean;
+}
+
+export interface DominoFriend {
+  id: string;
+  display_name: string;
+  friendship_id: string;
+}
+
+export interface DominoFriendRequest {
+  request_id: string;
+  user: { id: string; display_name: string };
+  created_at: string | null;
+}
+
+export interface DominoFriendsPendingResponse {
+  incoming: DominoFriendRequest[];
+  outgoing: DominoFriendRequest[];
 }
 
 function authHeaders(token: string): HeadersInit {
@@ -252,6 +300,66 @@ export const dominoApi = {
       method: 'POST',
       headers: authHeaders(token),
       body: JSON.stringify({ message }),
+    });
+    return handleResponse(res);
+  },
+
+  async getDiscoverStatus(token: string): Promise<DiscoverStatusResponse> {
+    const res = await fetch(`${BASE}/discover/status`, { headers: authHeaders(token) });
+    return handleResponse(res);
+  },
+
+  async getSimilarTasteTrending(token: string): Promise<DiscoverSimilarResponse> {
+    const res = await fetch(`${BASE}/discover/similar-taste`, { headers: authHeaders(token) });
+    return handleResponse(res);
+  },
+
+  async getFriendsTrending(token: string): Promise<DiscoverFriendsResponse> {
+    const res = await fetch(`${BASE}/discover/friends-trending`, { headers: authHeaders(token) });
+    return handleResponse(res);
+  },
+
+  async getFriends(token: string): Promise<{ friends: DominoFriend[] }> {
+    const res = await fetch(`${BASE}/friends`, { headers: authHeaders(token) });
+    return handleResponse(res);
+  },
+
+  async getFriendsPending(token: string): Promise<DominoFriendsPendingResponse> {
+    const res = await fetch(`${BASE}/friends/pending`, { headers: authHeaders(token) });
+    return handleResponse(res);
+  },
+
+  async sendFriendRequest(token: string, body: { phone?: string; invite_code?: string }): Promise<{ request_id: string; status: string }> {
+    const res = await fetch(`${BASE}/friends/request`, {
+      method: 'POST',
+      headers: authHeaders(token),
+      body: JSON.stringify(body),
+    });
+    return handleResponse(res);
+  },
+
+  async acceptFriendRequest(token: string, requestId: string): Promise<{ request_id: string; status: string }> {
+    const res = await fetch(`${BASE}/friends/accept`, {
+      method: 'POST',
+      headers: authHeaders(token),
+      body: JSON.stringify({ request_id: requestId }),
+    });
+    return handleResponse(res);
+  },
+
+  async declineFriendRequest(token: string, requestId: string): Promise<{ success: boolean }> {
+    const res = await fetch(`${BASE}/friends/decline`, {
+      method: 'POST',
+      headers: authHeaders(token),
+      body: JSON.stringify({ request_id: requestId }),
+    });
+    return handleResponse(res);
+  },
+
+  async removeFriend(token: string, friendshipId: string): Promise<{ success: boolean }> {
+    const res = await fetch(`${BASE}/friends/${friendshipId}`, {
+      method: 'DELETE',
+      headers: authHeaders(token),
     });
     return handleResponse(res);
   },

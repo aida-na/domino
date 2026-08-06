@@ -23,8 +23,18 @@ _SCHEMA_TIMEOUT_SECONDS = 20
 
 async def _apply_startup_schema() -> None:
     """Create tables if needed. Never raises — logs and returns on failure."""
+    is_sqlite = settings.DATABASE_URL.startswith("sqlite")
     try:
         async with asyncio.timeout(_SCHEMA_TIMEOUT_SECONDS):
+            if is_sqlite:
+                from app.db.session import Base
+                import app.models.domino  # noqa: F401 — register models
+
+                async with engine.begin() as conn:
+                    await conn.run_sync(Base.metadata.create_all)
+                logger.info("Startup schema applied (SQLite create_all)")
+                return
+
             async with engine.begin() as conn:
                 await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
                 await conn.execute(text("""
@@ -138,6 +148,8 @@ async def _apply_startup_schema() -> None:
                     "ALTER TABLE domino_users ADD COLUMN IF NOT EXISTS invite_code VARCHAR",
                     "ALTER TABLE domino_users ADD COLUMN IF NOT EXISTS referred_by VARCHAR",
                     "ALTER TABLE domino_users ADD COLUMN IF NOT EXISTS digest_opted_out BOOLEAN NOT NULL DEFAULT false",
+                    "ALTER TABLE domino_users ADD COLUMN IF NOT EXISTS discover_opt_in BOOLEAN NOT NULL DEFAULT false",
+                    "ALTER TABLE domino_users ADD COLUMN IF NOT EXISTS display_name VARCHAR(32)",
                     "ALTER TABLE domino_waitlist ADD COLUMN IF NOT EXISTS referred_by VARCHAR",
                     "ALTER TABLE domino_items ADD COLUMN IF NOT EXISTS topics TEXT[]",
                 ):
@@ -152,6 +164,53 @@ async def _apply_startup_schema() -> None:
                     CREATE UNIQUE INDEX IF NOT EXISTS ix_domino_users_invite_code
                     ON domino_users (invite_code)
                     WHERE invite_code IS NOT NULL
+                """))
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS domino_friendships (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        requester_phone VARCHAR NOT NULL REFERENCES domino_users(phone) ON DELETE CASCADE,
+                        addressee_phone VARCHAR NOT NULL REFERENCES domino_users(phone) ON DELETE CASCADE,
+                        pair_key VARCHAR NOT NULL UNIQUE,
+                        status VARCHAR NOT NULL DEFAULT 'pending',
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                        accepted_at TIMESTAMPTZ
+                    )
+                """))
+                await conn.execute(text("""
+                    CREATE INDEX IF NOT EXISTS ix_domino_friendships_requester
+                    ON domino_friendships (requester_phone)
+                """))
+                await conn.execute(text("""
+                    CREATE INDEX IF NOT EXISTS ix_domino_friendships_addressee
+                    ON domino_friendships (addressee_phone)
+                """))
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS domino_user_taste_profiles (
+                        user_phone VARCHAR PRIMARY KEY REFERENCES domino_users(phone) ON DELETE CASCADE,
+                        topic_weights JSONB NOT NULL DEFAULT '{}',
+                        item_count INT NOT NULL DEFAULT 0,
+                        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                    )
+                """))
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS domino_shared_saves (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        user_phone VARCHAR NOT NULL REFERENCES domino_users(phone) ON DELETE CASCADE,
+                        item_id UUID NOT NULL REFERENCES domino_items(id) ON DELETE CASCADE,
+                        url_normalized VARCHAR NOT NULL,
+                        title VARCHAR NOT NULL,
+                        topic_primary VARCHAR,
+                        saved_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                        UNIQUE (user_phone, url_normalized)
+                    )
+                """))
+                await conn.execute(text("""
+                    CREATE INDEX IF NOT EXISTS ix_domino_shared_saves_user_phone
+                    ON domino_shared_saves (user_phone)
+                """))
+                await conn.execute(text("""
+                    CREATE INDEX IF NOT EXISTS ix_domino_shared_saves_url_saved
+                    ON domino_shared_saves (url_normalized, saved_at)
                 """))
         logger.info("Startup schema applied successfully")
     except Exception:

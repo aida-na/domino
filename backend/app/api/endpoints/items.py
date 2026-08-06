@@ -145,6 +145,10 @@ async def create_item(
         db.add(item)
         await db.commit()
         await db.refresh(item)
+        from app.services.shared_saves import after_item_saved
+
+        await after_item_saved(db, current_user, item)
+        await db.commit()
         return _serialize_item(item)
 
     if input_type in ("link", "pdf"):
@@ -175,6 +179,10 @@ async def create_item(
     db.add(item)
     await db.commit()
     await db.refresh(item)
+    from app.services.shared_saves import after_item_saved
+
+    await after_item_saved(db, current_user, item)
+    await db.commit()
     return _serialize_item(item)
 
 
@@ -280,7 +288,12 @@ async def delete_item(
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
+    item_id_val = item.id
     await db.delete(item)
+    await db.commit()
+    from app.services.shared_saves import after_item_deleted
+
+    await after_item_deleted(db, current_user.phone, item_id_val)
     await db.commit()
     return {"success": True}
 

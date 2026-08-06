@@ -180,6 +180,14 @@ async def _handle_save(
 
     item = await _save_item(phone, body, db)
 
+    if item:
+        from app.services.shared_saves import after_item_saved
+
+        user_result = await db.execute(select(DominoUser).where(DominoUser.phone == phone))
+        user = user_result.scalar_one_or_none()
+        if user:
+            await after_item_saved(db, user, item)
+
     await _log_message(db, phone, "inbound", body, related_item_id=item.id if item else None)
     await db.commit()
 

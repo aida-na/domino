@@ -105,6 +105,46 @@ struct DominoAPI {
         try await client.request("POST", path: "chat", token: token, body: ChatRequest(message: message))
     }
 
+    // MARK: - Discover
+
+    func getDiscoverStatus(token: String) async throws -> DiscoverStatusResponse {
+        try await client.request("GET", path: "discover/status", token: token)
+    }
+
+    func getSimilarTasteTrending(token: String) async throws -> DiscoverSimilarResponse {
+        try await client.request("GET", path: "discover/similar-taste", token: token)
+    }
+
+    func getFriendsTrending(token: String) async throws -> DiscoverFriendsResponse {
+        try await client.request("GET", path: "discover/friends-trending", token: token)
+    }
+
+    // MARK: - Friends
+
+    func getFriends(token: String) async throws -> FriendsListResponse {
+        try await client.request("GET", path: "friends", token: token)
+    }
+
+    func getFriendsPending(token: String) async throws -> FriendsPendingResponse {
+        try await client.request("GET", path: "friends/pending", token: token)
+    }
+
+    func sendFriendRequest(token: String, body: FriendRequestBody) async throws -> OKResponse {
+        try await client.request("POST", path: "friends/request", token: token, body: body)
+    }
+
+    func acceptFriendRequest(token: String, requestId: String) async throws -> OKResponse {
+        try await client.request("POST", path: "friends/accept", token: token, body: FriendActionBody(requestId: requestId))
+    }
+
+    func declineFriendRequest(token: String, requestId: String) async throws -> OKResponse {
+        try await client.request("POST", path: "friends/decline", token: token, body: FriendActionBody(requestId: requestId))
+    }
+
+    func removeFriend(token: String, friendshipId: String) async throws {
+        try await client.requestVoid("DELETE", path: "friends/\(friendshipId)", token: token)
+    }
+
     // MARK: - Media
 
     func mediaProxyURL(for url: String, token: String) -> URL? {
