@@ -1,0 +1,42 @@
+{
+  "appId": "6792152513",
+  "versionLocalizationId": "0b36a79c-d21b-454d-b0f9-d243fc9d0a36",
+  "deviceTypes": {
+    "iphone67": "IPHONE_67",
+    "iphone65": "IPHONE_65"
+  },
+  "frames": [
+    {
+      "id": "01-onboarding",
+      "caption": "save it in one text",
+      "source": "iOS Simulator — onboarding sheet (save our number step)",
+      "capture": "Run app fresh install → Welcome/onboarding step 1. Simulator: iPhone 16 Pro Max (6.7\") and iPhone 14 Plus (6.5\")."
+    },
+    {
+      "id": "02-imessage",
+      "caption": "no app needed to capture",
+      "source": "Composite — real Messages thread or design mock",
+      "capture": "Screenshot Messages app: send link to +14249441140, show domino confirmation reply. Or render frontend/.design-previews/ at 1290×2796."
+    },
+    {
+      "id": "03-library",
+      "caption": "everything you've saved, searchable",
+      "source": "iOS Simulator — Dashboard tab with seeded items",
+      "capture": "Sign in as review account (password tab) → saved tab with masonry grid visible."
+    },
+    {
+      "id": "04-digest",
+      "caption": "it comes back weekly",
+      "source": "Email screenshot or onboarding email step",
+      "capture": "Resend test digest to review account email, screenshot email on device. Fallback: onboarding email step in app."
+    },
+    {
+      "id": "05-share",
+      "caption": "save from anywhere",
+      "source": "iOS Simulator — Safari share sheet with DominoShare extension",
+      "capture": "Safari → any article → Share → save to domino. Requires signed-in main app first."
+    }
+  ],
+  "outputDir": "ios/AppStore/screenshots",
+  "upload": "asc screenshots upload --version-localization 0b36a79c-d21b-454d-b0f9-d243fc9d0a36 --path ios/AppStore/screenshots/6.7 --device-type IPHONE_67"
+}

@@ -21,11 +21,11 @@
 		1A21BA44391304A6B871BF99 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF2032772F6EC5C9913DC400 /* DashboardView.swift */; };
 		1A6C6D39C58E4084CEAF7C5F /* Figtree-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C8D7BCEB907078F93A48B260 /* Figtree-Variable.ttf */; };
 		2C4109EB065F42DD0DF6FED0 /* DominoAnalytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE6FD484D8AB003B778A7417 /* DominoAnalytics.swift */; };
-		2E46EC1596CD41101D339233 /* DominoAnalytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE6FD484D8AB003B778A7417 /* DominoAnalytics.swift */; };
 		36B090B3C8F7E30CC4949EAB /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 23E284125AF3F5C92F202A47 /* PrivacyInfo.xcprivacy */; };
 		3804981AACF1E7061C977FE0 /* NoteEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB1133F4140CDFD9C6DA74C /* NoteEditorView.swift */; };
 		3D73E4AE5416095EB3A14754 /* AuthTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB9FCEC1559643AF482BF406 /* AuthTokens.swift */; };
 		3F0AC81397464C3F106B1D6E /* APIErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0451DCC77C1CCC4F0AC5DBFF /* APIErrorTests.swift */; };
+		45C5E29769B102410BF5A058 /* DiscoverModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB3CA8C6DF0CF1898D355859 /* DiscoverModels.swift */; };
 		5E14A1E590FEDA91C6DF6819 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E65BEF2A4B37F5FA84AE92 /* LoginView.swift */; };
 		6A2A183E4080084E721E3DB7 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4AB418B70E97CDA092E7AB9 /* AppConfig.swift */; };
 		6FB1300791C503968C535806 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6D34CBF441513A5E14CA139 /* KeychainStore.swift */; };
@@ -36,6 +36,7 @@
 		7E1752E133D01638A325A199 /* MapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16E5D8B9305B51F6D270CF3E /* MapView.swift */; };
 		81CB847D7DF05AF8D3A7E3C8 /* PhoneNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D34997406495F7E10B5946 /* PhoneNormalizer.swift */; };
 		8972081A26EC91744F637A3A /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = BFB6CA5DB6E475E233E2795B /* PostHog */; };
+		90717CA8B091F161066C6BB8 /* DiscoverModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB3CA8C6DF0CF1898D355859 /* DiscoverModels.swift */; };
 		924D5DA506B2320CBEC543FE /* DominoTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B51DB97607AAF0EBC95AABB /* DominoTypography.swift */; };
 		943AD3DEADEABFD4ACB11F44 /* DominoShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3E5594805D773C3D0A587BF1 /* DominoShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		963BB6F6EC6B02ED0EF11B31 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 303D7F5BF87CBDE7DD248F52 /* ProfileView.swift */; };
@@ -43,7 +44,6 @@
 		A00A2087940EE423BBD6ABA4 /* AuthSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28D6F546E09038A07F9FC5B7 /* AuthSession.swift */; };
 		A3662A0A2BAAD2B60E259680 /* DominoAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 051695AF117FA25EF1BE965C /* DominoAPI.swift */; };
 		A711340483FB090CEA4566B4 /* AuthFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E15A52F0AC86E51A71307E1 /* AuthFlowView.swift */; };
-		AC54F2E5D4634D87EE30B109 /* AuthSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28D6F546E09038A07F9FC5B7 /* AuthSession.swift */; };
 		B04A5E660642B6D17873A55F /* Item.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7F7C1F10CEE0A9D46A23280 /* Item.swift */; };
 		B14BB691B6C713DC8858E7B9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4BA27BCE292D668362F9E71D /* Assets.xcassets */; };
 		B5C9ACDA2C4528287E8710A1 /* AuthenticatedAsyncImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1DB7382A27B47BCCC306CF8 /* AuthenticatedAsyncImage.swift */; };
@@ -147,6 +147,7 @@
 		C1D34997406495F7E10B5946 /* PhoneNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneNormalizer.swift; sourceTree = "<group>"; };
 		C69E9064E4B5907DE6137A3C /* DominoComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DominoComponents.swift; sourceTree = "<group>"; };
 		C8D7BCEB907078F93A48B260 /* Figtree-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Figtree-Variable.ttf"; sourceTree = "<group>"; };
+		CB3CA8C6DF0CF1898D355859 /* DiscoverModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverModels.swift; sourceTree = "<group>"; };
 		CE6FD484D8AB003B778A7417 /* DominoAnalytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DominoAnalytics.swift; sourceTree = "<group>"; };
 		D4AB418B70E97CDA092E7AB9 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
 		D4ED92C63EE8A7DF5667B9DF /* DominoShare.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DominoShare.entitlements; sourceTree = "<group>"; };
@@ -223,6 +224,7 @@
 			children = (
 				AB9FCEC1559643AF482BF406 /* AuthTokens.swift */,
 				5D193BA112D4755AF07DBD94 /* ChatModels.swift */,
+				CB3CA8C6DF0CF1898D355859 /* DiscoverModels.swift */,
 				E7F7C1F10CEE0A9D46A23280 /* Item.swift */,
 				A69BFA48E3FDA73724F96B73 /* UserProfile.swift */,
 			);
@@ -586,6 +588,7 @@
 				C070A27FD205F140EB826040 /* ChatModels.swift in Sources */,
 				D6D1E01126D86D1A5650F381 /* ChatView.swift in Sources */,
 				1A21BA44391304A6B871BF99 /* DashboardView.swift in Sources */,
+				90717CA8B091F161066C6BB8 /* DiscoverModels.swift in Sources */,
 				0AFF6803DAA530EA88AA27C4 /* DiscoverView.swift in Sources */,
 				A3662A0A2BAAD2B60E259680 /* DominoAPI.swift in Sources */,
 				2C4109EB065F42DD0DF6FED0 /* DominoAnalytics.swift in Sources */,
@@ -617,12 +620,11 @@
 				01AB96A0A3ECD595D6C3D5DC /* APIClient.swift in Sources */,
 				C3AC0B3D4AB20689891CCB15 /* APIError.swift in Sources */,
 				6A2A183E4080084E721E3DB7 /* AppConfig.swift in Sources */,
-				AC54F2E5D4634D87EE30B109 /* AuthSession.swift in Sources */,
 				3D73E4AE5416095EB3A14754 /* AuthTokens.swift in Sources */,
 				F580C05476175D5D4691620C /* BookmarkMapper.swift in Sources */,
 				E0B9C723860E098D06CF987A /* ChatModels.swift in Sources */,
+				45C5E29769B102410BF5A058 /* DiscoverModels.swift in Sources */,
 				CB85146708F29CE8A37146E1 /* DominoAPI.swift in Sources */,
-				2E46EC1596CD41101D339233 /* DominoAnalytics.swift in Sources */,
 				E286C95D48FB3092541FDAAD /* DominoColors.swift in Sources */,
 				924D5DA506B2320CBEC543FE /* DominoTypography.swift in Sources */,
 				D8282B8542ED264F9D85A8D5 /* Item.swift in Sources */,
@@ -686,7 +688,7 @@
 				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
 				CODE_SIGN_ENTITLEMENTS = Domino/Resources/Domino.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 9;
 				INFOPLIST_FILE = Domino/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -758,6 +760,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_ENABLE_EXPLICIT_MODULES = NO;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.9;
 			};
@@ -815,6 +818,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_ENABLE_EXPLICIT_MODULES = NO;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.9;
 			};
@@ -826,7 +830,7 @@
 			buildSettings = {
 				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
 				CODE_SIGN_ENTITLEMENTS = DominoShare/DominoShare.entitlements;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 9;
 				INFOPLIST_FILE = DominoShare/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -866,7 +870,7 @@
 			buildSettings = {
 				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
 				CODE_SIGN_ENTITLEMENTS = DominoShare/DominoShare.entitlements;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 9;
 				INFOPLIST_FILE = DominoShare/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -888,7 +892,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
 				CODE_SIGN_ENTITLEMENTS = Domino/Resources/Domino.entitlements;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 9;
 				INFOPLIST_FILE = Domino/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -948,7 +952,7 @@
 			repositoryURL = "https://github.com/PostHog/posthog-ios";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 3.59.3;
+				minimumVersion = 3.69.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

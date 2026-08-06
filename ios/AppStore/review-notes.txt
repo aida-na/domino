@@ -1,0 +1,15 @@
+domino is an iMessage-first second brain. Capture works via iMessage; this iOS app is for
+retrieval (browse, search, chat) and includes a Safari share extension.
+
+Demo login (password tab on the login screen):
+  Phone: +15555550100
+  Password: DominoReview1!
+
+Please use the Password segment (not iMessage OTP). This account is pre-seeded with sample saves.
+
+Share extension: sign into the main app first, then in Safari use Share → "save to domino".
+
+Universal links: https://domino.fyi/dashboard?token=… signs the user in (also works as
+domino://dashboard?token=…).
+
+Contact: aidana.daulbayeva@gmail.com

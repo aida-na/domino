@@ -17,7 +17,7 @@ enum AppConfig {
     static let imessagePhone = "+14249441140"
     static let onboardingDefaultsKey = "domino_onboarding_v1"
     /// Pre-auth v3 carousel (save number → links → weekly) before login.
-    static let firstRunOnboardingKey = "domino_first_run_onboarding_v3"
+    static let firstRunOnboardingKey = "domino_first_run_onboarding_v4"
 
     static let posthogProjectToken: String? = {
         Bundle.main.object(forInfoDictionaryKey: "PostHogProjectToken") as? String
