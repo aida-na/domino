@@ -3,6 +3,17 @@
 import Link from 'next/link';
 import { DominoLandingMockups } from '@/features/domino/domino-landing-mockups';
 
+const LANDING = {
+  bg: '#FBFAF8',
+  ink: '#1F1B18',
+  accent: '#E8622C',
+  muted: '#6B625A',
+  footer: '#8C8177',
+  border: '#EDE6DD',
+  loginBorder: '#E3DCD3',
+  tileInactive: '#EDE7DD',
+} as const;
+
 const FEATURES = [
   {
     activeTile: 0 as const,
@@ -17,23 +28,22 @@ const FEATURES = [
   {
     activeTile: 2 as const,
     title: 'it finds you back',
-    body: "ask for 'camping spots near sf?' and the links you saved months ago come back. plus a weekly digest of what's worth a second look.",
+    body: 'ask for “camping spots near sf?” and the links you saved months ago come back. plus a weekly digest of what\'s worth a second look.',
   },
 ] as const;
 
 function TileChain({ active }: { active: 0 | 1 | 2 }) {
   return (
-    <div className="flex items-end gap-1" aria-hidden>
+    <div className="flex gap-[5px]" aria-hidden>
       {[0, 1, 2].map((i) => (
-        <div
+        <span
           key={i}
           style={{
-            width: 12,
-            height: 24,
-            borderRadius: 3,
-            background: i === active ? 'var(--domino-accent)' : 'var(--bg-deep)',
-            border: '1px solid var(--hairline-soft)',
-            opacity: i === active ? 1 : 0.85,
+            width: 32,
+            height: 20,
+            borderRadius: 5,
+            background: i === active ? LANDING.accent : LANDING.tileInactive,
+            display: 'block',
           }}
         />
       ))}
@@ -41,129 +51,161 @@ function TileChain({ active }: { active: 0 | 1 | 2 }) {
   );
 }
 
-function GetStartedButton({ className = '' }: { className?: string }) {
+function GetStartedButton({ className = '', fullWidth = false }: { className?: string; fullWidth?: boolean }) {
   return (
     <Link
       href="/login"
-      className={`touch-manipulation inline-flex items-center justify-center rounded-full px-8 py-3.5 text-[15px] font-semibold no-underline transition-opacity hover:opacity-90 ${className}`}
-      style={{ color: '#fff', background: 'var(--domino-accent)' }}
+      className={`touch-manipulation inline-flex items-center justify-center rounded-full no-underline transition-opacity hover:opacity-90 active:opacity-80 ${fullWidth ? 'w-full max-w-xs' : ''} ${className}`}
+      style={{
+        background: LANDING.accent,
+        color: '#fff',
+        padding: fullWidth ? '16px 32px' : '19px 46px',
+        fontSize: 17,
+        fontWeight: 600,
+        boxShadow: '0 10px 26px rgba(232,98,44,0.28)',
+      }}
     >
       get started
     </Link>
   );
 }
 
-/** Landing page — centered editorial layout with app mockups. */
+/** Landing page — matches Domino Landing.dc.html reference layout. */
 export function DominoHeroPoster() {
   return (
-    <div className="flex flex-col" style={{ background: 'var(--bg)' }}>
-      <header
-        className="flex shrink-0 items-center justify-between px-5 py-4 md:px-8"
-        style={{ paddingTop: 'max(16px, env(safe-area-inset-top))' }}
+    <div
+      className="mx-auto w-full max-w-[1440px] lowercase"
+      style={{ background: LANDING.bg, color: LANDING.ink, fontFamily: 'system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif' }}
+    >
+      <div
+        className="flex items-center justify-between px-5 py-5 md:px-14 md:py-[26px]"
+        style={{ paddingTop: 'max(20px, env(safe-area-inset-top))' }}
       >
-        <Link href="/" className="dn-wordmark text-[clamp(22px,4vw,28px)] no-underline" style={{ color: 'var(--ink)' }}>
-          domino<span style={{ color: 'var(--domino-accent)' }}>.</span>
+        <Link
+          href="/"
+          className="no-underline"
+          style={{
+            fontFamily: '"Basteleur Moonlight", var(--font-serif), serif',
+            fontSize: 'clamp(22px, 5vw, 26px)',
+            letterSpacing: '-0.01em',
+            color: LANDING.ink,
+          }}
+        >
+          domino<span style={{ color: LANDING.accent }}>.</span>
         </Link>
         <Link
           href="/login"
-          className="touch-manipulation rounded-full px-4 py-2.5 text-sm font-semibold no-underline transition-opacity hover:opacity-80"
+          className="touch-manipulation rounded-full no-underline transition-colors hover:opacity-80 active:opacity-70"
           style={{
-            color: 'var(--ink)',
-            background: 'var(--paper)',
-            border: '1px solid var(--hairline-soft)',
+            border: `1px solid ${LANDING.loginBorder}`,
+            borderRadius: 100,
+            padding: '9px 20px',
+            fontSize: 15,
+            background: '#fff',
+            color: LANDING.ink,
           }}
         >
           login
         </Link>
-      </header>
+      </div>
 
-      <section className="mx-auto w-full max-w-4xl px-6 pt-4 text-center md:px-8 md:pt-8">
+      <div className="flex flex-col items-center gap-5 px-5 pb-0 pt-6 text-center md:gap-6 md:px-14 md:pt-16">
         <h1
           style={{
-            fontFamily: 'var(--font-serif)',
-            fontWeight: 700,
-            fontSize: 'clamp(2rem, 5.5vw, 3.25rem)',
-            lineHeight: 1.06,
+            fontFamily: '"Basteleur Moonlight", var(--font-serif), serif',
+            fontSize: 'clamp(2.25rem, 10vw, 92px)',
+            lineHeight: 1.02,
             letterSpacing: '-0.025em',
-            color: 'var(--ink)',
-            margin: '0 0 14px',
-            textWrap: 'balance',
+            margin: 0,
+            maxWidth: 940,
+            textWrap: 'pretty',
+            color: LANDING.ink,
           }}
         >
           the things you save, when you actually need them
-          <span style={{ color: 'var(--domino-accent)' }}>.</span>
+          <span style={{ color: LANDING.accent }}>.</span>
         </h1>
         <p
           style={{
-            fontSize: 'clamp(15px, 2.5vw, 17px)',
+            fontSize: 'clamp(16px, 4vw, 20px)',
             lineHeight: 1.55,
-            color: 'var(--ink-3)',
-            margin: '0 auto 28px',
-            maxWidth: 420,
+            color: LANDING.muted,
+            margin: 0,
+            maxWidth: 560,
+            textWrap: 'pretty',
           }}
         >
           domino helps you never lose what you find.
         </p>
-        <GetStartedButton />
-      </section>
-
-      <section className="mx-auto w-full max-w-5xl px-2 py-10 md:py-14">
-        <DominoLandingMockups />
-      </section>
-
-      <section className="mx-auto w-full max-w-5xl px-6 pb-16 md:px-8 md:pb-24">
-        <div className="grid gap-10 md:grid-cols-3 md:gap-8">
-          {FEATURES.map(({ activeTile, title, body }) => (
-            <div key={title} className="flex flex-col gap-3">
-              <TileChain active={activeTile} />
-              <h2
-                style={{
-                  fontFamily: 'var(--font-serif)',
-                  fontWeight: 700,
-                  fontSize: 'clamp(1.125rem, 2.5vw, 1.35rem)',
-                  lineHeight: 1.2,
-                  letterSpacing: '-0.015em',
-                  color: 'var(--ink)',
-                  margin: 0,
-                }}
-              >
-                {title}
-              </h2>
-              <p
-                style={{
-                  fontSize: 15,
-                  lineHeight: 1.55,
-                  color: 'var(--ink-3)',
-                  margin: 0,
-                }}
-              >
-                {body}
-              </p>
-            </div>
-          ))}
+        <GetStartedButton className="mt-1 md:mt-1.5" fullWidth />
+        <div className="w-full md:max-w-none">
+          <DominoLandingMockups />
         </div>
-      </section>
+      </div>
 
-      <section
-        className="mx-auto w-full max-w-4xl px-6 py-16 text-center md:px-8 md:py-20"
-        style={{ borderTop: '1px solid var(--hairline-soft)' }}
+      <div
+        className="grid gap-0 px-5 pb-12 pt-8 md:grid-cols-3 md:gap-0 md:px-14 md:pb-[88px] md:pt-5"
+        style={{ borderTop: `1px solid ${LANDING.border}` }}
       >
+        {FEATURES.map(({ activeTile, title, body }, index) => (
+          <div
+            key={title}
+            className={`flex flex-col gap-3 py-8 md:border-t-0 md:py-0 ${
+              index === 0 ? 'md:pr-9 md:pt-11' : index === 1 ? 'border-t md:border-l md:px-9 md:pt-11' : 'border-t md:border-l md:pl-9 md:pt-11'
+            }`}
+            style={{
+              borderColor: LANDING.border,
+            }}
+          >
+            <TileChain active={activeTile} />
+            <div style={{ fontSize: 'clamp(18px, 4.5vw, 21px)', fontWeight: 700, color: LANDING.ink }}>{title}</div>
+            <p style={{ fontSize: 'clamp(15px, 3.8vw, 16px)', lineHeight: 1.55, color: LANDING.muted, margin: 0 }}>{body}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-col items-center gap-4 px-5 py-12 text-center md:gap-5 md:px-14 md:py-[88px]">
         <h2
           style={{
-            fontFamily: 'var(--font-serif)',
-            fontWeight: 700,
-            fontSize: 'clamp(1.75rem, 4.5vw, 2.5rem)',
-            lineHeight: 1.08,
-            letterSpacing: '-0.02em',
-            color: 'var(--ink)',
-            margin: '0 0 24px',
-            textWrap: 'balance',
+            fontFamily: '"Basteleur Moonlight", var(--font-serif), serif',
+            fontSize: 'clamp(1.875rem, 8vw, 56px)',
+            lineHeight: 1.05,
+            margin: 0,
+            letterSpacing: '-0.015em',
+            color: LANDING.ink,
+            textWrap: 'pretty',
           }}
         >
           start a pile worth keeping
         </h2>
-        <GetStartedButton />
-      </section>
+        <GetStartedButton className="mt-1 md:mt-2" fullWidth />
+      </div>
+
+      <div
+        className="flex flex-col items-center justify-between gap-5 px-5 py-7 sm:flex-row sm:items-center md:px-14"
+        style={{
+          borderTop: `1px solid ${LANDING.border}`,
+          paddingBottom: 'max(28px, env(safe-area-inset-bottom))',
+        }}
+      >
+        <span style={{ fontSize: 14, color: LANDING.footer }}>© 2026 daily labs</span>
+        <div className="flex items-center gap-6 sm:gap-7">
+          {[
+            { href: '/faq', label: 'faq' },
+            { href: '/privacy', label: 'privacy' },
+            { href: '/terms', label: 'terms' },
+          ].map(({ href, label }) => (
+            <Link
+              key={href}
+              href={href}
+              className="touch-manipulation no-underline transition-colors hover:opacity-80 active:opacity-70"
+              style={{ fontSize: 14, color: LANDING.footer, padding: '4px 0' }}
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

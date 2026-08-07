@@ -74,6 +74,14 @@
   --ring: #ED4715;
 }
 
+@font-face {
+  font-family: "Basteleur Moonlight";
+  src: url("/fonts/Basteleur-Moonlight.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Basteleur — logo + tab chrome */
 @font-face {
   font-family: "Basteleur";
@@ -349,6 +357,87 @@
 }
 @keyframes dnPop { 0% { transform: scale(0.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 .dn-pop { animation: dnPop 240ms cubic-bezier(.2,.8,.2,1); }
+
+/* ── Landing page (reference: Domino Landing.dc.html) ─── */
+.landing-phones-wrap {
+  position: relative;
+  width: 100%;
+  margin-top: clamp(20px, 5vw, 40px);
+  height: clamp(300px, 72vw, 440px);
+  overflow: hidden;
+}
+
+.landing-phones-track {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: clamp(14px, 3vw, 30px);
+  height: 100%;
+  padding: 0 max(16px, env(safe-area-inset-left))
+    0 max(16px, env(safe-area-inset-right));
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: max(16px, env(safe-area-inset-left));
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.landing-phones-track::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .landing-phones-track {
+    justify-content: center;
+    overflow: hidden;
+    scroll-snap-type: none;
+    padding: 0;
+  }
+}
+
+.landing-phone {
+  flex-shrink: 0;
+  scroll-snap-align: center;
+  padding: clamp(8px, 1.5vw, 11px);
+  background: #1f1b18;
+  box-shadow: 0 26px 54px rgba(31, 27, 24, 0.22);
+}
+
+.landing-phone-side {
+  width: clamp(168px, 42vw, 284px);
+  border-radius: clamp(28px, 6vw, 40px);
+  transform: translateY(clamp(12px, 3vw, 26px));
+}
+
+.landing-phone-center {
+  width: clamp(188px, 48vw, 322px);
+  border-radius: clamp(32px, 7vw, 45px);
+  z-index: 1;
+}
+
+@media (min-width: 768px) {
+  .landing-phone-side {
+    transform: rotate(var(--landing-phone-rotate, 0deg))
+      translateY(26px);
+  }
+}
+
+.landing-phone-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: clamp(22px, 5vw, 38px);
+}
+
+.landing-phones-fade {
+  pointer-events: none;
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 2;
+  height: clamp(80px, 20vw, 150px);
+  background: linear-gradient(to bottom, rgba(251, 250, 248, 0), #fbfaf8);
+}
 
 @layer base {
   * {
