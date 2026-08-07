@@ -23,7 +23,8 @@ export default function DominoLandingPage() {
     }
   }, []);
 
-  if (isLoading) {
+  // Show landing immediately — only hide once we know the user has a session.
+  if (!isLoading && sessionToken) {
     return (
       <main className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
         <span
@@ -36,7 +37,7 @@ export default function DominoLandingPage() {
 
   return (
     <main
-      className="h-dvh lowercase overflow-hidden leading-snug relative flex flex-col"
+      className="min-h-dvh lowercase leading-snug relative flex flex-col"
       style={{ background: 'var(--bg)', color: 'var(--ink)' }}
     >
       <DominoHeroPoster />

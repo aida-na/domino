@@ -1,38 +1,62 @@
 'use client';
 
 import Link from 'next/link';
-import { Send, Sparkles, Waypoints } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { DominoLandingMockups } from '@/features/domino/domino-landing-mockups';
 
 const FEATURES = [
-  { icon: Send, text: 'text it any link or thought' },
-  { icon: Waypoints, text: 'domino connects it to what you know' },
-  { icon: Sparkles, text: "it comes back right when it's useful" },
+  {
+    activeTile: 0 as const,
+    title: 'send it, domino sorts it',
+    body: 'send an imessage with a link or a half-formed thought at 1am. domino files it and groups it with the rest.',
+  },
+  {
+    activeTile: 1 as const,
+    title: 'it surfaces your taste',
+    body: "save enough and a shape appears. domino pulls in links from people circling the same ideas — the stuff you'd never have found on your own.",
+  },
+  {
+    activeTile: 2 as const,
+    title: 'it finds you back',
+    body: "ask for 'camping spots near sf?' and the links you saved months ago come back. plus a weekly digest of what's worth a second look.",
+  },
 ] as const;
 
-function FeatureRow({ icon, text }: { icon: ReactNode; text: string }) {
+function TileChain({ active }: { active: 0 | 1 | 2 }) {
   return (
-    <li className="flex items-center gap-3.5">
-      <div
-        className="flex shrink-0 items-center justify-center"
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: 10,
-          background: 'var(--bg-deep)',
-        }}
-      >
-        {icon}
-      </div>
-      <span style={{ fontSize: 15, lineHeight: 1.45, color: 'var(--ink-2)' }}>{text}</span>
-    </li>
+    <div className="flex items-end gap-1" aria-hidden>
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          style={{
+            width: 12,
+            height: 24,
+            borderRadius: 3,
+            background: i === active ? 'var(--domino-accent)' : 'var(--bg-deep)',
+            border: '1px solid var(--hairline-soft)',
+            opacity: i === active ? 1 : 0.85,
+          }}
+        />
+      ))}
+    </div>
   );
 }
 
-/** Landing hero — serif headline, three feature rows, light bg. */
+function GetStartedButton({ className = '' }: { className?: string }) {
+  return (
+    <Link
+      href="/login"
+      className={`touch-manipulation inline-flex items-center justify-center rounded-full px-8 py-3.5 text-[15px] font-semibold no-underline transition-opacity hover:opacity-90 ${className}`}
+      style={{ color: '#fff', background: 'var(--domino-accent)' }}
+    >
+      get started
+    </Link>
+  );
+}
+
+/** Landing page — centered editorial layout with app mockups. */
 export function DominoHeroPoster() {
   return (
-    <div className="flex min-h-0 flex-1 flex-col" style={{ background: 'var(--bg)' }}>
+    <div className="flex flex-col" style={{ background: 'var(--bg)' }}>
       <header
         className="flex shrink-0 items-center justify-between px-5 py-4 md:px-8"
         style={{ paddingTop: 'max(16px, env(safe-area-inset-top))' }}
@@ -53,60 +77,93 @@ export function DominoHeroPoster() {
         </Link>
       </header>
 
-      <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-6 pb-6 md:px-8">
+      <section className="mx-auto w-full max-w-4xl px-6 pt-4 text-center md:px-8 md:pt-8">
         <h1
           style={{
             fontFamily: 'var(--font-serif)',
             fontWeight: 700,
-            fontSize: 'clamp(1.75rem, 6vw, 2.25rem)',
-            lineHeight: 1.08,
-            letterSpacing: '-0.02em',
+            fontSize: 'clamp(2rem, 5.5vw, 3.25rem)',
+            lineHeight: 1.06,
+            letterSpacing: '-0.025em',
             color: 'var(--ink)',
-            margin: '0 0 16px',
+            margin: '0 0 14px',
             textWrap: 'balance',
           }}
         >
-          the things you save, when you actually need them.
+          the things you save, when you actually need them
+          <span style={{ color: 'var(--domino-accent)' }}>.</span>
         </h1>
-
         <p
           style={{
-            fontSize: 'clamp(15px, 3.5vw, 16px)',
+            fontSize: 'clamp(15px, 2.5vw, 17px)',
             lineHeight: 1.55,
             color: 'var(--ink-3)',
-            margin: '0 0 28px',
+            margin: '0 auto 28px',
+            maxWidth: 420,
           }}
         >
-          domino brings your saved links, notes, and ideas back at the moment they matter — so nothing
-          you keep goes to waste.
+          domino helps you never lose what you find.
         </p>
+        <GetStartedButton />
+      </section>
 
-        <ul className="m-0 flex list-none flex-col gap-4 p-0" style={{ marginBottom: 32 }}>
-          {FEATURES.map(({ icon: Icon, text }) => (
-            <FeatureRow
-              key={text}
-              icon={<Icon size={18} strokeWidth={1.75} style={{ color: 'var(--domino-accent)' }} />}
-              text={text}
-            />
+      <section className="mx-auto w-full max-w-5xl px-2 py-10 md:py-14">
+        <DominoLandingMockups />
+      </section>
+
+      <section className="mx-auto w-full max-w-5xl px-6 pb-16 md:px-8 md:pb-24">
+        <div className="grid gap-10 md:grid-cols-3 md:gap-8">
+          {FEATURES.map(({ activeTile, title, body }) => (
+            <div key={title} className="flex flex-col gap-3">
+              <TileChain active={activeTile} />
+              <h2
+                style={{
+                  fontFamily: 'var(--font-serif)',
+                  fontWeight: 700,
+                  fontSize: 'clamp(1.125rem, 2.5vw, 1.35rem)',
+                  lineHeight: 1.2,
+                  letterSpacing: '-0.015em',
+                  color: 'var(--ink)',
+                  margin: 0,
+                }}
+              >
+                {title}
+              </h2>
+              <p
+                style={{
+                  fontSize: 15,
+                  lineHeight: 1.55,
+                  color: 'var(--ink-3)',
+                  margin: 0,
+                }}
+              >
+                {body}
+              </p>
+            </div>
           ))}
-        </ul>
-
-        <div className="flex flex-col gap-3">
-          <Link
-            href="/login"
-            className="touch-manipulation inline-flex items-center justify-center rounded-2xl px-6 py-4 text-base font-semibold no-underline transition-opacity hover:opacity-90"
-            style={{
-              color: '#fff',
-              background: 'var(--domino-accent)',
-            }}
-          >
-            get started
-          </Link>
-          <span className="text-center text-[13px]" style={{ color: 'var(--ink-4)' }}>
-            free while in beta
-          </span>
         </div>
-      </div>
+      </section>
+
+      <section
+        className="mx-auto w-full max-w-4xl px-6 py-16 text-center md:px-8 md:py-20"
+        style={{ borderTop: '1px solid var(--hairline-soft)' }}
+      >
+        <h2
+          style={{
+            fontFamily: 'var(--font-serif)',
+            fontWeight: 700,
+            fontSize: 'clamp(1.75rem, 4.5vw, 2.5rem)',
+            lineHeight: 1.08,
+            letterSpacing: '-0.02em',
+            color: 'var(--ink)',
+            margin: '0 0 24px',
+            textWrap: 'balance',
+          }}
+        >
+          start a pile worth keeping
+        </h2>
+        <GetStartedButton />
+      </section>
     </div>
   );
 }
