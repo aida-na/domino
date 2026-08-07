@@ -473,14 +473,67 @@
   background: #fbfaf8;
 }
 
+.landing-status-bar {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  padding: clamp(8px, 2vw, 11px) clamp(14px, 3.5vw, 18px) clamp(2px, 0.5vw, 4px);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+}
+
+.landing-status-time {
+  z-index: 2;
+  font-size: clamp(10px, 2.5vw, 13px);
+  font-weight: 600;
+  line-height: 1;
+  color: #1f1b18;
+}
+
+.landing-status-island {
+  position: absolute;
+  left: 50%;
+  top: clamp(6px, 1.5vw, 8px);
+  width: clamp(52px, 13vw, 68px);
+  height: clamp(14px, 3.5vw, 18px);
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: #1f1b18;
+}
+
+.landing-status-icons {
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: clamp(3px, 0.8vw, 5px);
+  color: #1f1b18;
+}
+
+.landing-status-icon {
+  width: clamp(12px, 3vw, 15px);
+  height: auto;
+}
+
+.landing-status-battery {
+  width: clamp(16px, 4vw, 20px);
+}
+
+.landing-screen-title {
+  margin: 0;
+  font-family: "Basteleur", var(--font-serif), serif;
+  font-size: clamp(18px, 4.8vw, 22px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: #1f1b18;
+  text-align: left;
+}
+
 .landing-ask-header {
   flex-shrink: 0;
   border-bottom: 1px solid #ede6dd;
-  padding: clamp(28px, 7vw, 36px) clamp(10px, 2.5vw, 14px) clamp(8px, 2vw, 10px);
-}
-
-.landing-ask-title {
-  font-size: clamp(13px, 3.2vw, 16px);
+  padding: clamp(6px, 1.5vw, 8px) clamp(10px, 2.5vw, 14px) clamp(8px, 2vw, 10px);
 }
 
 .landing-ask-body {
