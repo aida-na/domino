@@ -3,46 +3,12 @@
 import Image from 'next/image';
 import type { ReactNode } from 'react';
 
-function PhoneSlot({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="landing-phone-slot">
-      {children}
-      <span className="landing-phone-label">{label}</span>
-    </div>
-  );
-}
+export type LandingPhoneVariant = 'saved' | 'map' | 'ask';
 
-function ScreenshotPhone({
-  src,
-  alt,
-  side,
-  rotate,
-}: {
-  src: string;
-  alt: string;
-  side: boolean;
-  rotate?: string;
-}) {
-  return (
-    <div
-      className={`landing-phone ${side ? 'landing-phone-side' : 'landing-phone-center'}`}
-      style={
-        rotate
-          ? ({ ['--landing-phone-rotate' as string]: rotate } as React.CSSProperties)
-          : undefined
-      }
-    >
-      <Image
-        src={src}
-        alt={alt}
-        width={300}
-        height={648}
-        className="landing-phone-img"
-        priority
-      />
-    </div>
-  );
-}
+const PHONE_ROTATE: Partial<Record<LandingPhoneVariant, string>> = {
+  saved: '-5deg',
+  ask: '5deg',
+};
 
 function LandingStatusBar() {
   return (
@@ -128,37 +94,99 @@ function AskMockScreen() {
   );
 }
 
-function AskMockPhone({ rotate }: { rotate?: string }) {
+function PhoneInner({ variant }: { variant: LandingPhoneVariant }) {
+  if (variant === 'saved') {
+    return (
+      <Image
+        src="/landing/saved.png"
+        alt="domino saved screen"
+        width={300}
+        height={648}
+        className="landing-phone-img"
+        priority
+      />
+    );
+  }
+  if (variant === 'map') {
+    return (
+      <Image
+        src="/landing/map.png"
+        alt="domino map screen"
+        width={300}
+        height={648}
+        className="landing-phone-img"
+        priority
+      />
+    );
+  }
+  return <AskMockScreen />;
+}
+
+/** Single phone frame — screenshot or ask mock. */
+export function LandingPhone({
+  variant,
+  side = false,
+  cropped = false,
+}: {
+  variant: LandingPhoneVariant;
+  side?: boolean;
+  cropped?: boolean;
+}) {
+  const rotate = PHONE_ROTATE[variant];
+  const inner = <PhoneInner variant={variant} />;
+
   return (
     <div
-      className="landing-phone landing-phone-side"
+      className={`landing-phone ${side ? 'landing-phone-side' : 'landing-phone-center'}${cropped ? ' landing-phone--pair' : ''}`}
       style={
-        rotate
+        rotate && !cropped
           ? ({ ['--landing-phone-rotate' as string]: rotate } as React.CSSProperties)
           : undefined
       }
     >
-      <AskMockScreen />
+      {cropped ? <div className="landing-phone-crop">{inner}</div> : inner}
     </div>
   );
 }
 
-/** Screenshot row — stacked on mobile, trio with tilt on desktop. */
+const DESKTOP_PHONES: { variant: LandingPhoneVariant; side: boolean }[] = [
+  { variant: 'saved', side: true },
+  { variant: 'map', side: false },
+  { variant: 'ask', side: true },
+];
+
+/** Desktop trio — horizontal row with tilt and bottom fade. */
 export function DominoLandingMockups() {
   return (
     <div className="landing-phones-wrap">
       <div className="landing-phones-fade" aria-hidden />
       <div className="landing-phones-track">
-        <PhoneSlot label="saved">
-          <ScreenshotPhone src="/landing/saved.png" alt="domino saved screen" side rotate="-5deg" />
-        </PhoneSlot>
-        <PhoneSlot label="map">
-          <ScreenshotPhone src="/landing/map.png" alt="domino map screen" side={false} />
-        </PhoneSlot>
-        <PhoneSlot label="ask">
-          <AskMockPhone rotate="5deg" />
-        </PhoneSlot>
+        {DESKTOP_PHONES.map(({ variant, side }) => (
+          <LandingPhone key={variant} variant={variant} side={side} />
+        ))}
       </div>
+    </div>
+  );
+}
+
+type PhonePairItem = {
+  variant: LandingPhoneVariant;
+  copy: ReactNode;
+};
+
+/** Mobile — cropped phone paired with feature copy. */
+export function DominoLandingPhonePairs({ items }: { items: PhonePairItem[] }) {
+  return (
+    <div className="landing-phone-pairs">
+      {items.map(({ variant, copy }, index) => (
+        <div
+          key={variant}
+          className={`landing-phone-pair${index > 0 ? ' landing-phone-pair--bordered' : ''}`}
+        >
+          <LandingPhone variant={variant} side={variant !== 'map'} cropped />
+          <div className="landing-phone-pair-copy">{copy}</div>
+        </div>
+      ))}
     </div>
   );
 }

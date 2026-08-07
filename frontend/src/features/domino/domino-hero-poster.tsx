@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { DominoLandingMockups } from '@/features/domino/domino-landing-mockups';
+import { DominoLandingMockups, DominoLandingPhonePairs } from '@/features/domino/domino-landing-mockups';
 
 const LANDING = {
   bg: '#FBFAF8',
@@ -16,16 +16,19 @@ const LANDING = {
 
 const FEATURES = [
   {
+    variant: 'saved' as const,
     activeTile: 0 as const,
     title: 'send it, domino sorts it',
     body: 'send an imessage with a link or a half-formed thought at 1am. domino files it and groups it with the rest.',
   },
   {
+    variant: 'map' as const,
     activeTile: 1 as const,
     title: 'it surfaces your taste',
     body: "save enough and a shape appears. domino pulls in links from people circling the same ideas — the stuff you'd never have found on your own.",
   },
   {
+    variant: 'ask' as const,
     activeTile: 2 as const,
     title: 'it finds you back',
     body: 'ask for “camping spots near sf?” and the links you saved months ago come back. plus a weekly digest of what\'s worth a second look.',
@@ -48,6 +51,24 @@ function TileChain({ active }: { active: 0 | 1 | 2 }) {
         />
       ))}
     </div>
+  );
+}
+
+function FeatureCopy({
+  activeTile,
+  title,
+  body,
+}: {
+  activeTile: 0 | 1 | 2;
+  title: string;
+  body: string;
+}) {
+  return (
+    <>
+      <TileChain active={activeTile} />
+      <div style={{ fontSize: 'clamp(18px, 4.5vw, 21px)', fontWeight: 700, color: LANDING.ink }}>{title}</div>
+      <p style={{ fontSize: 'clamp(15px, 3.8vw, 16px)', lineHeight: 1.55, color: LANDING.muted, margin: 0 }}>{body}</p>
+    </>
   );
 }
 
@@ -109,7 +130,7 @@ export function DominoHeroPoster() {
         </Link>
       </div>
 
-      <div className="flex flex-col items-center gap-5 px-5 pb-0 pt-6 text-center md:gap-6 md:px-14 md:pt-16">
+      <div className="flex flex-col items-center gap-4 px-5 pb-0 pt-4 text-center md:gap-6 md:px-14 md:pt-16">
         <h1
           style={{
             fontFamily: '"Basteleur Moonlight", var(--font-serif), serif',
@@ -137,34 +158,41 @@ export function DominoHeroPoster() {
         >
           domino helps you never lose what you find.
         </p>
-        <GetStartedButton className="mt-1 md:mt-1.5" fullWidth />
-        <div className="w-full md:max-w-none">
+        <GetStartedButton className="mt-0.5 md:mt-1.5" fullWidth />
+        <div className="hidden w-full md:block md:max-w-none">
           <DominoLandingMockups />
         </div>
       </div>
 
+      {/* Mobile: cropped phones paired with feature copy */}
+      <div className="md:hidden" style={{ borderTop: `1px solid ${LANDING.border}` }}>
+        <DominoLandingPhonePairs
+          items={FEATURES.map(({ variant, activeTile, title, body }) => ({
+            variant,
+            copy: <FeatureCopy activeTile={activeTile} title={title} body={body} />,
+          }))}
+        />
+      </div>
+
+      {/* Desktop: text-only feature grid */}
       <div
-        className="grid gap-0 px-5 pb-12 pt-8 md:grid-cols-3 md:gap-0 md:px-14 md:pb-[88px] md:pt-5"
+        className="hidden gap-0 px-5 pb-12 pt-8 md:grid md:grid-cols-3 md:gap-0 md:px-14 md:pb-[88px] md:pt-5"
         style={{ borderTop: `1px solid ${LANDING.border}` }}
       >
         {FEATURES.map(({ activeTile, title, body }, index) => (
           <div
             key={title}
-            className={`flex flex-col gap-3 py-8 md:border-t-0 md:py-0 ${
-              index === 0 ? 'md:pr-9 md:pt-11' : index === 1 ? 'border-t md:border-l md:px-9 md:pt-11' : 'border-t md:border-l md:pl-9 md:pt-11'
+            className={`flex flex-col gap-3 md:py-0 ${
+              index === 0 ? 'md:pr-9 md:pt-11' : index === 1 ? 'md:border-l md:px-9 md:pt-11' : 'md:border-l md:pl-9 md:pt-11'
             }`}
-            style={{
-              borderColor: LANDING.border,
-            }}
+            style={{ borderColor: LANDING.border }}
           >
-            <TileChain active={activeTile} />
-            <div style={{ fontSize: 'clamp(18px, 4.5vw, 21px)', fontWeight: 700, color: LANDING.ink }}>{title}</div>
-            <p style={{ fontSize: 'clamp(15px, 3.8vw, 16px)', lineHeight: 1.55, color: LANDING.muted, margin: 0 }}>{body}</p>
+            <FeatureCopy activeTile={activeTile} title={title} body={body} />
           </div>
         ))}
       </div>
 
-      <div className="flex flex-col items-center gap-4 px-5 py-12 text-center md:gap-5 md:px-14 md:py-[88px]">
+      <div className="flex flex-col items-center gap-4 px-5 py-8 text-center md:gap-5 md:px-14 md:py-[88px]">
         <h2
           style={{
             fontFamily: '"Basteleur Moonlight", var(--font-serif), serif',

@@ -359,101 +359,90 @@
 .dn-pop { animation: dnPop 240ms cubic-bezier(.2,.8,.2,1); }
 
 /* ── Landing page (reference: Domino Landing.dc.html) ─── */
+
+/* Desktop phone trio */
 .landing-phones-wrap {
   position: relative;
   width: 100%;
   margin-top: clamp(20px, 5vw, 40px);
+  height: 440px;
+  overflow: hidden;
 }
 
 .landing-phones-track {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 28px;
-  padding: 0 max(16px, env(safe-area-inset-left))
-    0 max(16px, env(safe-area-inset-right));
-}
-
-.landing-phone-slot {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.landing-phone-label {
-  font-size: 14px;
-  color: #8c8177;
-  letter-spacing: 0.02em;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 30px;
+  height: 100%;
 }
 
 .landing-phone {
   flex-shrink: 0;
-  padding: clamp(8px, 1.5vw, 11px);
+  padding: 11px;
   background: #1f1b18;
   box-shadow: 0 26px 54px rgba(31, 27, 24, 0.22);
-  width: min(240px, 72vw);
-  border-radius: clamp(28px, 6vw, 40px);
-  transform: none;
+}
+
+.landing-phone-side {
+  width: 284px;
+  border-radius: 40px;
+  transform: rotate(var(--landing-phone-rotate, 0deg)) translateY(26px);
 }
 
 .landing-phone-center {
+  width: 322px;
+  border-radius: 45px;
   z-index: 1;
 }
 
 .landing-phones-fade {
-  display: none;
+  pointer-events: none;
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 2;
+  height: 150px;
+  background: linear-gradient(to bottom, rgba(251, 250, 248, 0), #fbfaf8);
 }
 
-@media (min-width: 768px) {
-  .landing-phones-wrap {
-    height: 440px;
-    overflow: hidden;
-  }
+/* Mobile: cropped phone + feature pairs */
+.landing-phone-pairs {
+  display: flex;
+  flex-direction: column;
+}
 
-  .landing-phones-track {
-    flex-direction: row;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 30px;
-    height: 100%;
-    padding: 0;
-  }
+.landing-phone-pair {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 20px;
+}
 
-  .landing-phone-slot {
-    gap: 0;
-  }
+.landing-phone-pair--bordered {
+  border-top: 1px solid #ede6dd;
+}
 
-  .landing-phone-label {
-    display: none;
-  }
+.landing-phone-pair-copy {
+  display: flex;
+  width: 100%;
+  max-width: 360px;
+  flex-direction: column;
+  gap: 12px;
+}
 
-  .landing-phone {
-    scroll-snap-align: unset;
-  }
+.landing-phone--pair {
+  width: min(200px, 58vw);
+  border-radius: 32px;
+  transform: none;
+}
 
-  .landing-phone-side {
-    width: 284px;
-    border-radius: 40px;
-    transform: rotate(var(--landing-phone-rotate, 0deg)) translateY(26px);
-  }
-
-  .landing-phone-center {
-    width: 322px;
-    border-radius: 45px;
-    transform: none;
-  }
-
-  .landing-phones-fade {
-    display: block;
-    pointer-events: none;
-    position: absolute;
-    inset-inline: 0;
-    bottom: 0;
-    z-index: 2;
-    height: 150px;
-    background: linear-gradient(to bottom, rgba(251, 250, 248, 0), #fbfaf8);
-  }
+.landing-phone-crop {
+  max-height: 210px;
+  overflow: hidden;
+  border-radius: clamp(20px, 5vw, 26px);
 }
 
 .landing-phone-img {
