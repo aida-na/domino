@@ -126,25 +126,23 @@ function PhoneInner({ variant }: { variant: LandingPhoneVariant }) {
 export function LandingPhone({
   variant,
   side = false,
-  cropped = false,
 }: {
   variant: LandingPhoneVariant;
   side?: boolean;
-  cropped?: boolean;
 }) {
   const rotate = PHONE_ROTATE[variant];
   const inner = <PhoneInner variant={variant} />;
 
   return (
     <div
-      className={`landing-phone ${side ? 'landing-phone-side' : 'landing-phone-center'}${cropped ? ' landing-phone--pair' : ''}`}
+      className={`landing-phone ${side ? 'landing-phone-side' : 'landing-phone-center'}`}
       style={
-        rotate && !cropped
+        rotate && side
           ? ({ ['--landing-phone-rotate' as string]: rotate } as React.CSSProperties)
           : undefined
       }
     >
-      {cropped ? <div className="landing-phone-crop">{inner}</div> : inner}
+      {inner}
     </div>
   );
 }
@@ -174,7 +172,7 @@ type PhonePairItem = {
   copy: ReactNode;
 };
 
-/** Mobile — cropped phone paired with feature copy. */
+/** Mobile — full phone paired with feature copy. */
 export function DominoLandingPhonePairs({ items }: { items: PhonePairItem[] }) {
   return (
     <div className="landing-phone-pairs">
@@ -183,7 +181,7 @@ export function DominoLandingPhonePairs({ items }: { items: PhonePairItem[] }) {
           key={variant}
           className={`landing-phone-pair${index > 0 ? ' landing-phone-pair--bordered' : ''}`}
         >
-          <LandingPhone variant={variant} side={variant !== 'map'} cropped />
+          <LandingPhone variant={variant} />
           <div className="landing-phone-pair-copy">{copy}</div>
         </div>
       ))}

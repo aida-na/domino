@@ -164,7 +164,7 @@ export function DominoHeroPoster() {
         </div>
       </div>
 
-      {/* Mobile: cropped phones paired with feature copy */}
+      {/* Mobile: full phones paired with feature copy */}
       <div className="md:hidden" style={{ borderTop: `1px solid ${LANDING.border}` }}>
         <DominoLandingPhonePairs
           items={FEATURES.map(({ variant, activeTile, title, body }) => ({
