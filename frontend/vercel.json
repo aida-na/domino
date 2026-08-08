@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "ignoreCommand": "BASE=${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}; git cat-file -e \"$BASE\" 2>/dev/null && git diff --quiet \"$BASE\" HEAD -- ./ || exit 1",
   "headers": [
     {
       "source": "/.well-known/apple-app-site-association",
