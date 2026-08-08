@@ -11,6 +11,8 @@ struct UserProfile: Codable, Equatable {
     let inviteURL: String?
     let discoverOptIn: Bool?
     let displayName: String?
+    let referrerDisplayName: String?
+    let friendsJoinedCount: Int?
 
     enum CodingKeys: String, CodingKey {
         case phone, email, timezone
@@ -21,6 +23,8 @@ struct UserProfile: Codable, Equatable {
         case inviteURL = "invite_url"
         case discoverOptIn = "discover_opt_in"
         case displayName = "display_name"
+        case referrerDisplayName = "referrer_display_name"
+        case friendsJoinedCount = "friends_joined_count"
     }
 }
 

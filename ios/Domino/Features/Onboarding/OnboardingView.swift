@@ -4,6 +4,7 @@ import UIKit
 enum OnboardingStep: Int {
     case save
     case email
+    case invite
 }
 
 struct OnboardingView: View {
@@ -53,10 +54,13 @@ struct OnboardingView: View {
                     .padding(.top, 4)
 
                 Group {
-                    if step == .save {
+                    switch step {
+                    case .save:
                         saveContent
-                    } else {
+                    case .email:
                         emailContent
+                    case .invite:
+                        inviteContent
                     }
                 }
                 .padding(.horizontal, 22)
@@ -96,12 +100,12 @@ struct OnboardingView: View {
 
     private var stepDots: some View {
         HStack(spacing: 5) {
-            Capsule()
-                .fill(step == .save ? DominoColors.ink : DominoColors.hairline)
-                .frame(width: step == .save ? 14 : 5, height: 5)
-            Capsule()
-                .fill(step == .email ? DominoColors.ink : DominoColors.hairline)
-                .frame(width: step == .email ? 14 : 5, height: 5)
+            ForEach(0..<3, id: \.self) { index in
+                let active = step.rawValue == index
+                Capsule()
+                    .fill(active ? DominoColors.ink : DominoColors.hairline)
+                    .frame(width: active ? 14 : 5, height: 5)
+            }
         }
     }
 
@@ -109,7 +113,7 @@ struct OnboardingView: View {
         Group {
             if step == .save {
                 Button {
-                    if hasEmail { finish() } else { step = .email }
+                    if hasEmail { step = .invite } else { step = .email }
                 } label: {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .semibold))
@@ -119,9 +123,21 @@ struct OnboardingView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("next")
-            } else {
+            } else if step == .email {
                 Button {
                     step = .save
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(DominoColors.ink)
+                        .frame(width: 28, height: 28)
+                        .overlay(Circle().stroke(DominoColors.hairline, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("previous")
+            } else {
+                Button {
+                    step = .email
                 } label: {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 12, weight: .semibold))
@@ -137,9 +153,10 @@ struct OnboardingView: View {
 
     @ViewBuilder
     private var illustration: some View {
-        if step == .save {
+        switch step {
+        case .save, .invite:
             SaveIllustration()
-        } else {
+        case .email:
             DigestIllustration()
         }
     }
@@ -223,6 +240,43 @@ struct OnboardingView: View {
         }
     }
 
+    private var inviteContent: some View {
+        VStack(spacing: 6) {
+            Text("invite a friend")
+                .font(.dominoDisplay(26, weight: .bold))
+                .foregroundStyle(DominoColors.ink)
+                .multilineTextAlignment(.center)
+
+            Text("share your link — you'll auto-connect when they join.")
+                .font(.dominoBody(15))
+                .foregroundStyle(DominoColors.ink2)
+                .multilineTextAlignment(.center)
+
+            let url = auth.profile?.inviteURL ?? "https://domino.fyi/login"
+            let shareText = "i use domino to save links over iMessage. join with my link and we'll connect automatically:\n\(url)"
+
+            ShareLink(item: shareText) {
+                Text("share invite")
+                    .font(.dominoBody(16, weight: .semibold))
+                    .foregroundStyle(DominoColors.paper)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .background(DominoColors.ink)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 14)
+
+            Button(action: finish) {
+                Text("skip for now")
+                    .font(.dominoBody(14))
+                    .foregroundStyle(DominoColors.ink3)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 8)
+        }
+    }
+
     private func openIMessage() {
         guard let url = AppConfig.imessageURL else { return }
         UIApplication.shared.open(url)
@@ -241,7 +295,7 @@ struct OnboardingView: View {
             )
             DominoAnalytics.capture("digest_email_saved")
             onEmailSaved(me.email ?? trimmed)
-            finish()
+            step = .invite
         } catch {
             errorMessage = error.localizedDescription
         }

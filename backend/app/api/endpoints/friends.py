@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.endpoints.auth import get_domino_user, normalize_domino_phone
+from app.api.endpoints.auth import get_domino_user
 from app.db.session import get_db
 from app.models.domino import DominoUser
 from app.services import friends as friends_service
@@ -60,11 +60,7 @@ async def send_friend_request(
         if not target:
             raise HTTPException(status_code=404, detail="Invite code not found")
     elif body.phone:
-        phone = normalize_domino_phone(body.phone)
-        from sqlalchemy import select
-
-        result = await db.execute(select(DominoUser).where(DominoUser.phone == phone))
-        target = result.scalar_one_or_none()
+        target = await friends_service.resolve_user_by_phone(db, body.phone)
         if not target:
             raise HTTPException(status_code=404, detail="User not found")
     else:

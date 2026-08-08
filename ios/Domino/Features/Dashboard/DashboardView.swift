@@ -22,6 +22,7 @@ struct DashboardView: View {
     @State private var selectedBookmark: Bookmark?
     @State private var showOnboarding = false
     @State private var profileEmail: String?
+    @State private var referrerNotice: String?
 
     private let api = DominoAPI()
 
@@ -139,6 +140,19 @@ struct DashboardView: View {
                     )
                     .transition(.opacity)
                     .zIndex(100)
+                }
+
+                if let referrerNotice {
+                    Text(referrerNotice)
+                        .font(.dominoBody(13, weight: .medium))
+                        .foregroundStyle(DominoColors.paper)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(DominoColors.ink)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .padding(.bottom, 100)
+                        .transition(.opacity)
+                        .zIndex(90)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -380,6 +394,15 @@ struct DashboardView: View {
             items = try await api.getItems(token: token, limit: 500)
             if let profile = try? await api.getMe(token: token) {
                 profileEmail = profile.email
+                if let referrer = profile.referrerDisplayName,
+                   UserDefaults.standard.string(forKey: "domino_referrer_toast_v1") != referrer {
+                    UserDefaults.standard.set(referrer, forKey: "domino_referrer_toast_v1")
+                    referrerNotice = "you joined through \(referrer)'s invite — you're connected."
+                    Task {
+                        try? await Task.sleep(for: .seconds(4))
+                        referrerNotice = nil
+                    }
+                }
             }
             evaluateOnboarding()
         } catch {

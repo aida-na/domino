@@ -1,22 +1,33 @@
 import SwiftUI
 
-/// First-run onboarding → login, mirroring the web landing → /login flow.
+/// Landing → login. Product carousel runs after sign-in.
 struct AuthFlowView: View {
-    @AppStorage(AppConfig.firstRunOnboardingKey) private var firstRunComplete = false
+    private enum Step {
+        case landing
+        case login
+    }
+
+    @State private var step: Step = .landing
 
     var body: some View {
         Group {
-            if firstRunComplete {
-                LoginView()
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
-            } else {
-                FirstRunOnboardingView {
-                    withAnimation(.easeInOut(duration: 0.32)) {
-                        firstRunComplete = true
-                    }
-                }
-                .transition(.opacity)
+            switch step {
+            case .landing:
+                AuthLandingView(onContinue: goToLogin)
+                    .transition(.opacity)
+            case .login:
+                LoginView(
+                    onBack: { withAnimation(.easeInOut(duration: 0.28)) { step = .landing } }
+                )
+                .transition(.move(edge: .trailing).combined(with: .opacity))
             }
+        }
+        .animation(.easeInOut(duration: 0.28), value: step)
+    }
+
+    private func goToLogin() {
+        withAnimation(.easeInOut(duration: 0.28)) {
+            step = .login
         }
     }
 }

@@ -6,7 +6,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.services.discover import _aggregate_trending, get_friends_trending, get_similar_taste_trending
+from app.services.discover import (
+    _aggregate_trending,
+    get_friends_trending,
+    get_global_trending,
+    get_similar_taste_trending,
+)
 
 
 def _row(url, title, user, saved_at=None, topic="Technology"):
@@ -55,3 +60,16 @@ async def test_friends_trending_opt_in_required():
     result = await get_friends_trending(user, db)
     assert result["opt_in_required"] is True
     assert result["items"] == []
+
+
+@pytest.mark.asyncio
+async def test_global_trending_no_opt_in_gate():
+    user = SimpleNamespace(phone="+15550001111", discover_opt_in=False)
+    db = AsyncMock()
+    rows_result = MagicMock()
+    rows_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
+    db.execute = AsyncMock(return_value=rows_result)
+    result = await get_global_trending(user, db)
+    assert result["items"] == []
+    assert result["cohort_label"] == "domino users"
+    db.execute.assert_called_once()

@@ -8,10 +8,14 @@ import { useDominoAuth } from '@/features/domino/domino-auth-context';
 import {
   dominoApi,
   type DiscoverFriendsResponse,
+  type DiscoverGlobalResponse,
   type DiscoverSimilarResponse,
   type DiscoverStatusResponse,
   type DiscoverTrendItem,
+  type DominoMeResponse,
 } from '@/features/domino/domino-api';
+import { inviteUrlFor, shareInvite } from '@/features/domino/domino-invite';
+import posthog from 'posthog-js';
 import { toBookmark, cardColor, timeAgo, hashColor, type Bookmark } from '@/features/domino/domino-utils';
 import { IcBookmark, KindIcon } from '@/features/domino/domino-icons';
 
@@ -112,25 +116,56 @@ function TrendingSection({
 function DiscoverContent() {
   const { sessionToken } = useDominoAuth();
   const [items, setItems] = useState<Bookmark[]>([]);
+  const [profile, setProfile] = useState<DominoMeResponse | null>(null);
   const [status, setStatus] = useState<DiscoverStatusResponse | null>(null);
+  const [globalTrend, setGlobalTrend] = useState<DiscoverGlobalResponse | null>(null);
   const [similar, setSimilar] = useState<DiscoverSimilarResponse | null>(null);
   const [friendsTrend, setFriendsTrend] = useState<DiscoverFriendsResponse | null>(null);
   const [fetching, setFetching] = useState(true);
+  const [sharing, setSharing] = useState(false);
 
   useEffect(() => {
     if (!sessionToken) return;
     Promise.all([
       dominoApi.getItems(sessionToken, 200),
+      dominoApi.getMe(sessionToken),
       dominoApi.getDiscoverStatus(sessionToken),
+      dominoApi.getGlobalTrending(sessionToken),
       dominoApi.getSimilarTasteTrending(sessionToken),
       dominoApi.getFriendsTrending(sessionToken),
-    ]).then(([raw, st, sim, fr]) => {
+    ]).then(([raw, me, st, global, sim, fr]) => {
       setItems(raw.map(toBookmark));
+      setProfile(me);
       setStatus(st);
+      setGlobalTrend(global);
       setSimilar(sim);
       setFriendsTrend(fr);
+      if (global.items.length > 0) {
+        posthog.capture('discover_global_viewed', { item_count: global.items.length });
+      }
     }).catch(console.error).finally(() => setFetching(false));
   }, [sessionToken]);
+
+  async function onInviteFriend() {
+    if (!sessionToken) return;
+    setSharing(true);
+    try {
+      let me = profile;
+      if (!me?.invite_code) {
+        me = await dominoApi.getMe(sessionToken);
+        setProfile(me);
+      }
+      const url = inviteUrlFor(me);
+      if (!url) return;
+      posthog.capture('discover_friends_empty_cta_clicked');
+      const result = await shareInvite(url);
+      posthog.capture('invite_shared', { source: 'discover_friends_empty', result });
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+    } finally {
+      setSharing(false);
+    }
+  }
 
   const collections = useMemo(() => {
     const map: Record<string, Bookmark[]> = {};
@@ -175,7 +210,7 @@ function DiscoverContent() {
           background: 'var(--card-o)', border: '1px solid var(--hairline-soft)',
         }}>
           <div style={{ fontSize: 'var(--dn-text-base)', fontWeight: 600, color: 'var(--ink)', marginBottom: 6 }}>
-            opt in to see trending saves
+            opt in to see personalized trending
           </div>
           <p style={{ fontSize: 'var(--dn-text-sm)', color: 'var(--ink-3)', margin: '0 0 12px', lineHeight: 1.5 }}>
             Share link URLs anonymously (title + URL only) to unlock similar-taste and friends trending.
@@ -189,38 +224,6 @@ function DiscoverContent() {
           </Link>
         </div>
       )}
-
-      <TrendingSection
-        title="Trending with similar taste"
-        meta={similar?.items.length ? `${similar.items.length} links` : undefined}
-        items={similar?.items ?? []}
-        countLabel={(n) => `${n} people with similar taste`}
-        empty={
-          !status?.opt_in ? (
-            <>Turn on discover sharing in <Link href="/me" style={{ color: 'var(--domino-accent)' }}>settings</Link>.</>
-          ) : !status.taste_ready ? (
-            <>Save a few more links first — we need at least 5 saves to match your taste.</>
-          ) : (
-            <>Nothing trending yet. Check back as more people save this week.</>
-          )
-        }
-      />
-
-      <TrendingSection
-        title="Trending among friends"
-        meta={friendsTrend?.friend_count ? `${friendsTrend.friend_count} friends` : undefined}
-        items={friendsTrend?.items ?? []}
-        countLabel={(n) => `${n} ${n === 1 ? 'friend' : 'friends'} saved this`}
-        empty={
-          !status?.opt_in ? (
-            <>Turn on discover sharing in <Link href="/me" style={{ color: 'var(--domino-accent)' }}>settings</Link>.</>
-          ) : (status.friend_count ?? 0) === 0 ? (
-            <>Add friends in <Link href="/me" style={{ color: 'var(--domino-accent)' }}>settings</Link> to see what they&apos;re saving.</>
-          ) : (
-            <>No friend saves this week yet.</>
-          )
-        }
-      />
 
       {collections.length > 0 && (
         <div style={{ marginBottom: 28 }}>
@@ -304,7 +307,62 @@ function DiscoverContent() {
         </div>
       )}
 
-      {items.length === 0 && !similar?.items.length && !friendsTrend?.items.length && (
+      <TrendingSection
+        title="Trending on domino"
+        meta={globalTrend?.items.length ? `${globalTrend.items.length} links` : undefined}
+        items={globalTrend?.items ?? []}
+        countLabel={(n) => `${n} ${n === 1 ? 'person' : 'people'} saved this`}
+        empty={<>Nothing trending yet this week — check back soon.</>}
+      />
+
+      <TrendingSection
+        title="Trending with similar taste"
+        meta={similar?.items.length ? `${similar.items.length} links` : undefined}
+        items={similar?.items ?? []}
+        countLabel={(n) => `${n} people with similar taste`}
+        empty={
+          !status?.opt_in ? (
+            <>Turn on discover sharing in <Link href="/me" style={{ color: 'var(--domino-accent)' }}>settings</Link>.</>
+          ) : !status.taste_ready ? (
+            <>Save a few more links first — we need at least 5 saves to match your taste.</>
+          ) : (
+            <>Nothing trending yet. Check back as more people save this week.</>
+          )
+        }
+      />
+
+      <TrendingSection
+        title="Trending among friends"
+        meta={friendsTrend?.friend_count ? `${friendsTrend.friend_count} friends` : undefined}
+        items={friendsTrend?.items ?? []}
+        countLabel={(n) => `${n} ${n === 1 ? 'friend' : 'friends'} saved this`}
+        empty={
+          !status?.opt_in ? (
+            <>Turn on discover sharing in <Link href="/me" style={{ color: 'var(--domino-accent)' }}>settings</Link>.</>
+          ) : (status.friend_count ?? 0) === 0 ? (
+            <div>
+              <p style={{ margin: '0 0 12px' }}>Invite someone — you&apos;ll auto-connect when they join.</p>
+              <button
+                type="button"
+                onClick={() => { void onInviteFriend(); }}
+                disabled={sharing}
+                style={{
+                  height: 36, padding: '0 14px', borderRadius: 9999,
+                  background: 'var(--ink)', color: 'var(--bg)',
+                  fontSize: 'var(--dn-text-sm)', fontWeight: 600,
+                  border: 0, cursor: sharing ? 'wait' : 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                {sharing ? 'sharing…' : 'invite someone'}
+              </button>
+            </div>
+          ) : (
+            <>No friend saves this week yet.</>
+          )
+        }
+      />
+
+      {items.length === 0 && !globalTrend?.items.length && !similar?.items.length && !friendsTrend?.items.length && (
         <div style={{ padding: '40px 18px', textAlign: 'center' }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>🗺️</div>
           <div style={{ fontSize: 'var(--dn-text-base)', fontWeight: 600, color: 'var(--ink)', marginBottom: 6 }}>Nothing here yet</div>

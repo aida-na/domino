@@ -20,6 +20,7 @@
 		19A72B4168D4FF367121DAF0 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63753FD7A88A6EB3000712A8 /* ShareViewController.swift */; };
 		1A21BA44391304A6B871BF99 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF2032772F6EC5C9913DC400 /* DashboardView.swift */; };
 		1A6C6D39C58E4084CEAF7C5F /* Figtree-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C8D7BCEB907078F93A48B260 /* Figtree-Variable.ttf */; };
+		28F5805F0BCAB3A0F0962FA4 /* AuthLandingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00E2AEC7A42C4816AB0C270 /* AuthLandingView.swift */; };
 		2C4109EB065F42DD0DF6FED0 /* DominoAnalytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE6FD484D8AB003B778A7417 /* DominoAnalytics.swift */; };
 		36B090B3C8F7E30CC4949EAB /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 23E284125AF3F5C92F202A47 /* PrivacyInfo.xcprivacy */; };
 		3804981AACF1E7061C977FE0 /* NoteEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB1133F4140CDFD9C6DA74C /* NoteEditorView.swift */; };
@@ -149,6 +150,7 @@
 		C8D7BCEB907078F93A48B260 /* Figtree-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Figtree-Variable.ttf"; sourceTree = "<group>"; };
 		CB3CA8C6DF0CF1898D355859 /* DiscoverModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverModels.swift; sourceTree = "<group>"; };
 		CE6FD484D8AB003B778A7417 /* DominoAnalytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DominoAnalytics.swift; sourceTree = "<group>"; };
+		D00E2AEC7A42C4816AB0C270 /* AuthLandingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthLandingView.swift; sourceTree = "<group>"; };
 		D4AB418B70E97CDA092E7AB9 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
 		D4ED92C63EE8A7DF5667B9DF /* DominoShare.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DominoShare.entitlements; sourceTree = "<group>"; };
 		D6D34CBF441513A5E14CA139 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
@@ -205,6 +207,7 @@
 			isa = PBXGroup;
 			children = (
 				0E15A52F0AC86E51A71307E1 /* AuthFlowView.swift */,
+				D00E2AEC7A42C4816AB0C270 /* AuthLandingView.swift */,
 				B640F283079BB59B5BCD53FD /* FirstRunOnboardingView.swift */,
 				79E65BEF2A4B37F5FA84AE92 /* LoginView.swift */,
 			);
@@ -581,6 +584,7 @@
 				0854DC0228281D6A09B6955B /* AppConfig.swift in Sources */,
 				FF6BF7E2EA97D6A3F84B7658 /* AppNavigation.swift in Sources */,
 				A711340483FB090CEA4566B4 /* AuthFlowView.swift in Sources */,
+				28F5805F0BCAB3A0F0962FA4 /* AuthLandingView.swift in Sources */,
 				A00A2087940EE423BBD6ABA4 /* AuthSession.swift in Sources */,
 				F3F6642DB821C483C2BC0547 /* AuthTokens.swift in Sources */,
 				B5C9ACDA2C4528287E8710A1 /* AuthenticatedAsyncImage.swift in Sources */,

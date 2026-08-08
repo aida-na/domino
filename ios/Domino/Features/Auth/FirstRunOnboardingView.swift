@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Pre-auth product onboarding (v3) — shown once before login.
+/// Post-auth product onboarding (v3) — shown once after login.
 struct FirstRunOnboardingView: View {
     let onComplete: () -> Void
 
@@ -44,7 +44,7 @@ struct FirstRunOnboardingView: View {
             }
 
             Button(action: advance) {
-                Text(slide == slides.count - 1 ? "start saving" : "next")
+                Text(slide == slides.count - 1 ? "get started" : "next")
                     .font(.dominoBody(16, weight: .medium))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)

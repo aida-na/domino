@@ -84,7 +84,7 @@ async def _handle_new_user(phone: str, body: str, db: AsyncSession) -> None:
     from app.core.config import settings
 
     try:
-        session_token, _ = await create_session_for_phone(phone, db)
+        session_token, _, _ = await create_session_for_phone(phone, db)
     except SignupFullError:
         base = (settings.FRONTEND_URL or "https://www.domino.fyi").rstrip("/")
         reply = f"{SIGNUP_FULL_MESSAGE}\n\njoin the waitlist: {base}"
@@ -115,7 +115,7 @@ async def _handle_login(phone: str, db: AsyncSession) -> None:
     from app.api.endpoints.auth import (
         _send_message, build_magic_link, create_session_for_phone,
     )
-    session_token, _ = await create_session_for_phone(phone, db)
+    session_token, _, _ = await create_session_for_phone(phone, db)
     link = build_magic_link(session_token)
     reply = f"here's your dashboard link:\n{link}"
     _send_message(phone, reply)

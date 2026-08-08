@@ -7,6 +7,7 @@ import { DominoProtectedRoute } from '@/features/domino/domino-protected-route';
 import { useDominoAuth } from '@/features/domino/domino-auth-context';
 import { useDominoTheme } from '@/features/domino/domino-theme';
 import { dominoApi, type DominoFriend, type DominoFriendsPendingResponse, type DominoMeResponse } from '@/features/domino/domino-api';
+import { inviteUrlFor, shareInvite } from '@/features/domino/domino-invite';
 import { toBookmark, cardColor, type Bookmark } from '@/features/domino/domino-utils';
 import { IcBookmark, IcStar, IcShare, IcCompass, IcChevron, IcX } from '@/features/domino/domino-icons';
 import posthog from 'posthog-js';
@@ -75,9 +76,11 @@ function SheetShell({ title, onClose, children }: { title: string; onClose: () =
 
 function FriendsSheet({
   token,
+  profile,
   onClose,
 }: {
   token: string;
+  profile: DominoMeResponse | null;
   onClose: () => void;
 }) {
   const [friends, setFriends] = useState<DominoFriend[]>([]);
@@ -86,6 +89,8 @@ function FriendsSheet({
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const [showManualAdd, setShowManualAdd] = useState(false);
 
   async function reload() {
     setLoading(true);
@@ -146,25 +151,55 @@ function FriendsSheet({
     }
   }
 
+  async function onShareInvite() {
+    setSharing(true);
+    setError(null);
+    try {
+      let me = profile;
+      if (!me?.invite_code) {
+        me = await dominoApi.getMe(token);
+      }
+      const url = inviteUrlFor(me);
+      if (!url) {
+        setError('couldn’t create invite');
+        return;
+      }
+      posthog.capture('invite_shared', { source: 'friends_sheet' });
+      await shareInvite(url);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+      setError(e instanceof Error ? e.message : 'couldn’t share invite');
+    } finally {
+      setSharing(false);
+    }
+  }
+
   return (
     <SheetShell title="friends" onClose={onClose}>
       {loading ? (
         <div style={{ color: 'var(--ink-3)', fontSize: 'var(--dn-text-base)' }}>loading…</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div>
-            <label style={labelStyle()}>add by invite code</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input style={fieldStyle()} value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} placeholder="abc12345" />
-              <button type="button" className="dn-chip" style={{ height: 44, padding: '0 16px' }} onClick={() => { void sendRequest(); }}>add</button>
-            </div>
-          </div>
-          <div>
-            <label style={labelStyle()}>add by phone</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input style={fieldStyle()} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1…" />
-              <button type="button" className="dn-chip" style={{ height: 44, padding: '0 16px' }} onClick={() => { void sendRequest(); }}>add</button>
-            </div>
+          <div style={{
+            padding: 14, borderRadius: 14,
+            background: 'var(--card-o)', border: '1px solid var(--hairline-soft)',
+          }}>
+            <p style={{ fontSize: 'var(--dn-text-sm)', color: 'var(--ink-2)', margin: '0 0 12px', lineHeight: 1.5 }}>
+              Share your invite link — you&apos;ll auto-connect when they join.
+            </p>
+            <button
+              type="button"
+              onClick={() => { void onShareInvite(); }}
+              disabled={sharing}
+              style={{
+                width: '100%', height: 44, borderRadius: 12, border: 0,
+                background: 'var(--ink)', color: 'var(--bg)',
+                fontSize: 'var(--dn-text-base)', fontWeight: 600,
+                cursor: sharing ? 'wait' : 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              {sharing ? 'sharing…' : 'share invite link'}
+            </button>
           </div>
 
           {pending && pending.incoming.length > 0 && (
@@ -180,6 +215,20 @@ function FriendsSheet({
             </div>
           )}
 
+          <div>
+            <div style={labelStyle()}>your friends ({friends.length})</div>
+            {friends.length === 0 ? (
+              <p style={{ fontSize: 'var(--dn-text-sm)', color: 'var(--ink-3)', margin: 0 }}>No friends yet — share your invite link above.</p>
+            ) : (
+              friends.map((f) => (
+                <div key={f.friendship_id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ flex: 1, fontSize: 'var(--dn-text-base)' }}>{f.display_name}</span>
+                  <button type="button" className="dn-chip" style={{ height: 34, color: 'oklch(0.55 0.18 27)' }} onClick={() => { void dominoApi.removeFriend(token, f.friendship_id).then(reload); }}>remove</button>
+                </div>
+              ))
+            )}
+          </div>
+
           {pending && pending.outgoing.length > 0 && (
             <div>
               <div style={labelStyle()}>pending</div>
@@ -193,16 +242,34 @@ function FriendsSheet({
           )}
 
           <div>
-            <div style={labelStyle()}>your friends ({friends.length})</div>
-            {friends.length === 0 ? (
-              <p style={{ fontSize: 'var(--dn-text-sm)', color: 'var(--ink-3)', margin: 0 }}>No friends yet — add someone by invite code or phone.</p>
-            ) : (
-              friends.map((f) => (
-                <div key={f.friendship_id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <span style={{ flex: 1, fontSize: 'var(--dn-text-base)' }}>{f.display_name}</span>
-                  <button type="button" className="dn-chip" style={{ height: 34, color: 'oklch(0.55 0.18 27)' }} onClick={() => { void dominoApi.removeFriend(token, f.friendship_id).then(reload); }}>remove</button>
+            <button
+              type="button"
+              onClick={() => setShowManualAdd((v) => !v)}
+              style={{
+                background: 'none', border: 0, padding: 0, cursor: 'pointer',
+                fontSize: 'var(--dn-text-sm)', fontWeight: 600, color: 'var(--ink-3)',
+                fontFamily: 'inherit',
+              }}
+            >
+              {showManualAdd ? 'hide manual add' : 'already on domino? add by code or phone'}
+            </button>
+            {showManualAdd && (
+              <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div>
+                  <label style={labelStyle()}>invite code</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input style={fieldStyle()} value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} placeholder="abc12345" />
+                    <button type="button" className="dn-chip" style={{ height: 44, padding: '0 16px' }} onClick={() => { void sendRequest(); }}>add</button>
+                  </div>
                 </div>
-              ))
+                <div>
+                  <label style={labelStyle()}>phone</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input style={fieldStyle()} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1…" />
+                    <button type="button" className="dn-chip" style={{ height: 44, padding: '0 16px' }} onClick={() => { void sendRequest(); }}>add</button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 
@@ -378,35 +445,6 @@ function EditProfileSheet({
   );
 }
 
-function inviteUrlFor(profile: DominoMeResponse | null): string | null {
-  if (profile?.invite_url) return profile.invite_url;
-  if (profile?.invite_code) {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://domino.fyi';
-    return `${origin}/login?ref=${profile.invite_code}`;
-  }
-  return null;
-}
-
-async function shareInvite(url: string): Promise<'shared' | 'copied'> {
-  const data = {
-    title: 'join me on domino',
-    text: 'i use domino to save links & notes over iMessage — here’s your invite:',
-    url,
-  };
-  if (typeof navigator !== 'undefined' && navigator.share) {
-    try {
-      await navigator.share(data);
-      return 'shared';
-    } catch (e) {
-      if (e instanceof DOMException && e.name === 'AbortError') throw e;
-    }
-  }
-  await navigator.clipboard.writeText(
-    `join me on domino — your second brain via iMessage\n${url}`,
-  );
-  return 'copied';
-}
-
 function MeContent() {
   const router = useRouter();
   const { phone, logout, sessionToken, hasPassword, refreshProfile } = useDominoAuth();
@@ -472,6 +510,7 @@ function MeContent() {
         return;
       }
       const result = await shareInvite(url);
+      posthog.capture('invite_shared', { source: 'me_tab', result });
       if (result === 'copied') showToast('invite copied');
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') return;
@@ -575,6 +614,9 @@ function MeContent() {
             </div>
             <div style={{ fontSize: 'var(--dn-text-sm)', color: 'var(--ink-3)', marginTop: 2 }}>
               {profile?.email || 'domino user'}
+              {(profile?.friends_joined_count ?? 0) > 0 && (
+                <> · {profile!.friends_joined_count} joined via your invite</>
+              )}
             </div>
           </div>
         </div>
@@ -721,7 +763,7 @@ function MeContent() {
       )}
 
       {sheet === 'friends' && sessionToken && (
-        <FriendsSheet token={sessionToken} onClose={() => setSheet(null)} />
+        <FriendsSheet token={sessionToken} profile={profile} onClose={() => setSheet(null)} />
       )}
 
       {sheet === 'edit' && profile && sessionToken && (

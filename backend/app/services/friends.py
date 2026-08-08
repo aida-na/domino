@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.domino import DominoFriendship, DominoUser
@@ -145,6 +145,40 @@ async def send_request(db: AsyncSession, requester: DominoUser, target_phone: st
     return friendship
 
 
+async def auto_friend_on_referral(
+    db: AsyncSession,
+    new_user: DominoUser,
+    referrer: DominoUser,
+) -> DominoFriendship | None:
+    """Create an accepted friendship when a user signs up via invite link."""
+    if referrer.phone == new_user.phone:
+        return None
+    existing = await get_friendship_by_pair(db, referrer.phone, new_user.phone)
+    if existing:
+        if existing.status != "accepted":
+            existing.status = "accepted"
+            existing.accepted_at = datetime.now(timezone.utc)
+            await db.flush()
+        return existing
+    friendship = DominoFriendship(
+        requester_phone=referrer.phone,
+        addressee_phone=new_user.phone,
+        pair_key=friendship_pair_key(referrer.phone, new_user.phone),
+        status="accepted",
+        accepted_at=datetime.now(timezone.utc),
+    )
+    db.add(friendship)
+    await db.flush()
+    return friendship
+
+
+async def count_referral_signups(db: AsyncSession, invite_code: str) -> int:
+    result = await db.execute(
+        select(func.count()).select_from(DominoUser).where(DominoUser.referred_by == invite_code)
+    )
+    return int(result.scalar_one() or 0)
+
+
 async def resolve_user_by_invite_code(db: AsyncSession, invite_code: str) -> DominoUser | None:
     code = invite_code.strip().lower()
     if not code:
@@ -152,6 +186,51 @@ async def resolve_user_by_invite_code(db: AsyncSession, invite_code: str) -> Dom
     result = await db.execute(select(DominoUser).where(DominoUser.invite_code == code))
     return result.scalar_one_or_none()
 
+
+def phone_lookup_variants(raw: str) -> list[str]:
+    """E.164 and legacy webhook formats for the same handset."""
+    variants: list[str] = []
+    stripped = raw.strip().replace("whatsapp:", "").strip()
+    if stripped:
+        variants.append(stripped)
+    digits = "".join(c for c in raw if c.isdigit())
+    if len(digits) == 10:
+        variants.append(f"+1{digits}")
+    if len(digits) == 11 and digits.startswith("1"):
+        variants.append(f"+{digits}")
+    if digits and stripped.startswith("+"):
+        variants.append(f"+{digits}")
+    # Preserve order, drop duplicates
+    return list(dict.fromkeys(v for v in variants if v))
+
+
+async def resolve_user_by_phone(db: AsyncSession, raw_phone: str) -> DominoUser | None:
+    from app.api.endpoints.auth import normalize_domino_phone
+
+    try:
+        normalized = normalize_domino_phone(raw_phone)
+    except HTTPException:
+        normalized = None
+
+    candidates = phone_lookup_variants(raw_phone)
+    if normalized and normalized not in candidates:
+        candidates.insert(0, normalized)
+
+    if not candidates:
+        return None
+
+    result = await db.execute(select(DominoUser).where(DominoUser.phone.in_(candidates)))
+    users = list(result.scalars().all())
+    if not users:
+        return None
+    if len(users) == 1:
+        return users[0]
+    # Prefer exact normalized match when duplicates exist (legacy data)
+    if normalized:
+        for user in users:
+            if user.phone == normalized:
+                return user
+    return users[0]
 
 async def accept_request(db: AsyncSession, user_phone: str, request_id: UUID) -> DominoFriendship:
     result = await db.execute(

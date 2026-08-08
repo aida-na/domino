@@ -66,7 +66,17 @@ function FeatureCopy({
   return (
     <>
       <TileChain active={activeTile} />
-      <div style={{ fontSize: 'clamp(18px, 4.5vw, 21px)', fontWeight: 700, color: LANDING.ink }}>{title}</div>
+      <div
+        style={{
+          fontFamily: 'var(--font-serif)',
+          fontSize: 'clamp(18px, 4.5vw, 21px)',
+          fontWeight: 700,
+          letterSpacing: '-0.02em',
+          color: LANDING.ink,
+        }}
+      >
+        {title}
+      </div>
       <p style={{ fontSize: 'clamp(15px, 3.8vw, 16px)', lineHeight: 1.55, color: LANDING.muted, margin: 0 }}>{body}</p>
     </>
   );
@@ -102,16 +112,7 @@ export function DominoHeroPoster() {
         className="flex items-center justify-between px-5 py-5 md:px-14 md:py-[26px]"
         style={{ paddingTop: 'max(20px, env(safe-area-inset-top))' }}
       >
-        <Link
-          href="/"
-          className="no-underline"
-          style={{
-            fontFamily: '"Basteleur Moonlight", var(--font-serif), serif',
-            fontSize: 'clamp(22px, 5vw, 26px)',
-            letterSpacing: '-0.01em',
-            color: LANDING.ink,
-          }}
-        >
+        <Link href="/" className="dn-wordmark no-underline" style={{ fontSize: 'clamp(17px, 4vw, 19px)' }}>
           domino<span style={{ color: LANDING.accent }}>.</span>
         </Link>
         <Link
@@ -133,8 +134,9 @@ export function DominoHeroPoster() {
       <div className="flex flex-col items-center gap-4 px-5 pb-0 pt-4 text-center md:gap-6 md:px-14 md:pt-16">
         <h1
           style={{
-            fontFamily: '"Basteleur Moonlight", var(--font-serif), serif',
+            fontFamily: 'var(--font-serif)',
             fontSize: 'clamp(2.25rem, 10vw, 92px)',
+            fontWeight: 700,
             lineHeight: 1.02,
             letterSpacing: '-0.025em',
             margin: 0,
@@ -195,8 +197,9 @@ export function DominoHeroPoster() {
       <div className="flex flex-col items-center gap-4 px-5 py-8 text-center md:gap-5 md:px-14 md:py-[88px]">
         <h2
           style={{
-            fontFamily: '"Basteleur Moonlight", var(--font-serif), serif',
+            fontFamily: 'var(--font-serif)',
             fontSize: 'clamp(1.875rem, 8vw, 56px)',
+            fontWeight: 700,
             lineHeight: 1.05,
             margin: 0,
             letterSpacing: '-0.015em',
@@ -204,7 +207,7 @@ export function DominoHeroPoster() {
             textWrap: 'pretty',
           }}
         >
-          start a pile worth keeping
+          one link starts it
         </h2>
         <GetStartedButton className="mt-1 md:mt-2" fullWidth />
       </div>

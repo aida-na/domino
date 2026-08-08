@@ -1,23 +1,33 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { IcBookmark, IcMap, IcCompass, IcUser } from './domino-icons';
+import { IcBookmark, IcMap, IcAsk, IcCompass } from './domino-icons';
+import {
+  DominoFirstRunCarousel,
+  isFirstRunCarouselDone,
+} from './domino-first-run-carousel';
 
 const TABS = [
   { id: 'saved',    href: '/dashboard', label: 'saved',    Icon: IcBookmark },
   { id: 'map',      href: '/map',       label: 'map',      Icon: IcMap },
+  { id: 'ask',      href: '/chat',      label: 'ask',      Icon: IcAsk },
   { id: 'discover', href: '/discover',  label: 'discover', Icon: IcCompass },
-  { id: 'me',       href: '/me',        label: 'me',       Icon: IcUser },
 ] as const;
 
 export function DominoAppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const [showFirstRun, setShowFirstRun] = useState(false);
+
+  useEffect(() => {
+    setShowFirstRun(!isFirstRunCarouselDone());
+  }, []);
 
   const active =
     pathname.startsWith('/map') ? 'map' :
-    pathname.startsWith('/discover') ? 'discover' :
-    pathname.startsWith('/me') ? 'me' : 'saved';
+    pathname.startsWith('/chat') ? 'ask' :
+    pathname.startsWith('/discover') ? 'discover' : 'saved';
 
   return (
     <div className="dn-app" style={{
@@ -55,6 +65,10 @@ export function DominoAppShell({ children }: { children: React.ReactNode }) {
           );
         })}
       </nav>
+
+      {showFirstRun && (
+        <DominoFirstRunCarousel onComplete={() => setShowFirstRun(false)} />
+      )}
     </div>
   );
 }

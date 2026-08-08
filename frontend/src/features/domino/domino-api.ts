@@ -11,6 +11,8 @@ export interface DominoMeResponse {
   invite_url?: string | null;
   discover_opt_in?: boolean;
   display_name?: string | null;
+  referrer_display_name?: string | null;
+  friends_joined_count?: number;
 }
 
 export interface DominoMeUpdate {
@@ -46,9 +48,18 @@ export interface DominoItem {
   is_favorited: boolean;
 }
 
+export interface ChatSource {
+  id: string;
+  summary: string;
+  raw_input?: string;
+  input_type?: string;
+  topic: string | null;
+  created_at: string | null;
+}
+
 export interface ChatResponse {
   answer: string;
-  sources: { id: string; summary: string; created_at: string | null }[];
+  sources: ChatSource[];
 }
 
 export interface DiscoverTrendItem {
@@ -62,6 +73,11 @@ export interface DiscoverSimilarResponse {
   items: DiscoverTrendItem[];
   cohort_label: string;
   opt_in_required?: boolean;
+}
+
+export interface DiscoverGlobalResponse {
+  items: DiscoverTrendItem[];
+  cohort_label: string;
 }
 
 export interface DiscoverFriendsResponse {
@@ -316,6 +332,11 @@ export const dominoApi = {
 
   async getFriendsTrending(token: string): Promise<DiscoverFriendsResponse> {
     const res = await fetch(`${BASE}/discover/friends-trending`, { headers: authHeaders(token) });
+    return handleResponse(res);
+  },
+
+  async getGlobalTrending(token: string): Promise<DiscoverGlobalResponse> {
+    const res = await fetch(`${BASE}/discover/global-trending`, { headers: authHeaders(token) });
     return handleResponse(res);
   },
 

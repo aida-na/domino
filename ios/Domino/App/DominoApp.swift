@@ -35,10 +35,16 @@ struct DominoApp: App {
     }
 
     private func handleIncomingURL(_ url: URL) {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
+
+        if let ref = components.queryItems?.first(where: { $0.name == "ref" })?.value,
+           !ref.isEmpty {
+            UserDefaults.standard.set(ref, forKey: AppConfig.inviteRefKey)
+        }
+
         // Universal link: https://domino.fyi/dashboard?token=<uuid>
         // Custom scheme: domino://dashboard?token=<uuid>
-        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              let token = components.queryItems?.first(where: { $0.name == "token" })?.value else {
+        guard let token = components.queryItems?.first(where: { $0.name == "token" })?.value else {
             return
         }
         Task { try? await auth.loginWithToken(token) }

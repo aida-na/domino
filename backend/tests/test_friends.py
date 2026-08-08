@@ -8,8 +8,10 @@ from uuid import uuid4
 import pytest
 
 from app.services.friends import (
+    auto_friend_on_referral,
     friendship_pair_key,
     mask_phone,
+    phone_lookup_variants,
     serialize_friend,
     send_request,
 )
@@ -33,6 +35,11 @@ def test_serialize_friend_never_includes_phone():
 def test_serialize_friend_masks_when_no_display_name():
     user = SimpleNamespace(id=uuid4(), phone="+15559876543", display_name=None)
     assert serialize_friend(user)["display_name"] == "***6543"
+
+
+def test_phone_lookup_variants_us_number():
+    variants = phone_lookup_variants("6196727673")
+    assert "+16196727673" in variants
 
 
 @pytest.mark.asyncio
@@ -68,3 +75,34 @@ async def test_send_request_auto_accepts_reverse_pending():
     friendship = await send_request(db, requester, target_phone)
     assert friendship.status == "accepted"
     assert friendship.accepted_at is not None
+
+
+@pytest.mark.asyncio
+async def test_auto_friend_on_referral_creates_accepted():
+    referrer = SimpleNamespace(phone="+15551111111")
+    new_user = SimpleNamespace(phone="+15552222222")
+
+    db = AsyncMock()
+    db.flush = AsyncMock()
+
+    async def fake_execute(stmt):
+        result = MagicMock()
+        result.scalar_one_or_none = MagicMock(return_value=None)
+        return result
+
+    db.execute = fake_execute
+    db.add = MagicMock()
+
+    friendship = await auto_friend_on_referral(db, new_user, referrer)
+    assert friendship.status == "accepted"
+    assert friendship.requester_phone == referrer.phone
+    assert friendship.addressee_phone == new_user.phone
+    db.add.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_auto_friend_on_referral_skips_self():
+    user = SimpleNamespace(phone="+15551111111")
+    db = AsyncMock()
+    assert await auto_friend_on_referral(db, user, user) is None
+    db.execute.assert_not_called()

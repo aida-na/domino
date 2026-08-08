@@ -58,6 +58,14 @@ export const IcMap = ({ size = 22, filled }: IconProps) => (
     <path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v16M15 6v16" />
   </svg>
 );
+export const IcAsk = ({ size = 22, filled }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24"
+    fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.7"
+    strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5M10 8.5a1.5 1.5 0 1 1 1.5 1.5" />
+  </svg>
+);
 export const IcCompass = ({ size = 22, filled }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24"
     fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.7"

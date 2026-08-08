@@ -4,8 +4,8 @@ import { type FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
 import { useDominoAuth } from '@/features/domino/domino-auth-context';
-import { DominoLogo } from '@/features/domino/domino-logo';
-import { DominoBrandHero } from '@/features/domino/domino-brand-hero';
+import Link from 'next/link';
+import { ChevronLeft } from 'lucide-react';
 import { DominoApiError, dominoApi } from '@/features/domino/domino-api';
 import { WaitlistModal } from '@/components/WaitlistModal';
 import { Button } from '@/components/ui/button';
@@ -225,27 +225,40 @@ export default function DominoLoginPage() {
   const inputClass =
     'min-h-[48px] w-full rounded-xl border border-border bg-card px-4 text-base text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50';
 
+  const headerTitle =
+    otpStep === 'code' ? 'verify code' : otpStep === 'setPassword' ? 'set a password' : 'sign in';
+
+  const headerSubtitle =
+    otpStep === 'code' || otpStep === 'setPassword'
+      ? null
+      : mode === 'password'
+        ? 'enter the password you saved after your first sign-in.'
+        : 'enter your phone — we’ll iMessage you a code.';
+
   return (
-    <main className="min-h-dvh bg-background bg-check-grid font-figtree lowercase text-foreground">
-      <div className="mx-auto max-w-[480px] px-4 py-8 pb-24 md:px-6">
-        <div className="mb-8 flex items-center justify-between">
-          <DominoLogo href="/" size="md" />
-        </div>
+    <main className="min-h-dvh bg-background font-figtree lowercase text-foreground">
+      <div className="mx-auto max-w-[480px] px-6 py-8 pb-24">
+        <Link
+          href="/"
+          className="mb-6 inline-flex touch-manipulation items-center gap-1 text-sm text-muted-foreground no-underline transition-opacity hover:opacity-80"
+        >
+          <ChevronLeft className="size-3.5" strokeWidth={2.5} />
+          back
+        </Link>
 
-        <DominoBrandHero className="mb-6" />
-
-        <h1 className="mb-3 text-[clamp(1.375rem,5vw,1.75rem)] font-black tracking-[-0.03em] text-foreground">
-          {mode === 'password' ? 'sign in with password' : 'sign in'}
+        <h1
+          className="mb-2 text-[clamp(1.75rem,5vw,2rem)] font-bold tracking-[-0.03em] text-foreground"
+          style={{ fontFamily: 'var(--font-serif)' }}
+        >
+          {headerTitle}
         </h1>
-        <p className="mb-6 max-w-[420px] text-sm leading-relaxed text-muted-foreground">
-          {mode === 'password'
-            ? 'use the password you set after your first iMessage code sign-in.'
-            : 'we’ll iMessage you a one-time code. new seats are limited each day.'}
-        </p>
+        {headerSubtitle ? (
+          <p className="mb-6 max-w-[420px] text-[15px] leading-relaxed text-muted-foreground">{headerSubtitle}</p>
+        ) : null}
 
         {mode === 'otp' && otpStep === 'phone' && (
           <form onSubmit={handleOtpRequest} className="mb-8 space-y-4">
-            <label htmlFor="domino-phone-otp" className="block text-xs font-bold tracking-wide text-muted-foreground">
+            <label htmlFor="domino-phone-otp" className="mb-1.5 block text-xs font-semibold text-muted-foreground">
               phone number
             </label>
             <input
@@ -260,19 +273,20 @@ export default function DominoLoginPage() {
               className={inputClass}
             />
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            <Button type="submit" className="min-h-[48px] w-full touch-manipulation" disabled={submitting || !phoneHasMinDigits(phone)}>
+            <Button
+              type="submit"
+              className="min-h-[52px] w-full touch-manipulation rounded-2xl text-base font-semibold"
+              disabled={submitting || !phoneHasMinDigits(phone)}
+            >
               {submitting ? 'sending…' : 'send code'}
             </Button>
-            <p className="text-center text-xs text-muted-foreground">
-              already set a password?{' '}
-              <button
-                type="button"
-                className="font-semibold text-primary underline underline-offset-2"
-                onClick={() => switchMode('password')}
-              >
-                use password
-              </button>
-            </p>
+            <button
+              type="button"
+              className="w-full touch-manipulation py-1 text-sm text-muted-foreground"
+              onClick={() => switchMode('password')}
+            >
+              use password instead
+            </button>
           </form>
         )}
 
@@ -282,7 +296,7 @@ export default function DominoLoginPage() {
               check iMessage for your code, sent to{' '}
               <span className="font-medium text-foreground">{phone}</span>
             </p>
-            <label htmlFor="domino-otp" className="block text-xs font-bold tracking-wide text-muted-foreground">
+            <label htmlFor="domino-otp" className="mb-1.5 block text-xs font-semibold text-muted-foreground">
               6-digit code
             </label>
             <input
@@ -327,7 +341,11 @@ export default function DominoLoginPage() {
               >
                 back
               </Button>
-              <Button type="submit" className="min-h-[48px] flex-1 touch-manipulation" disabled={submitting || code.length < 6}>
+              <Button
+                type="submit"
+                className="min-h-[52px] flex-1 touch-manipulation rounded-2xl text-base font-semibold"
+                disabled={submitting || code.length < 6}
+              >
                 {submitting ? 'verifying…' : 'verify'}
               </Button>
             </div>
@@ -339,7 +357,7 @@ export default function DominoLoginPage() {
             <p className="text-sm text-muted-foreground">
               optional: add a password so you can sign in without a code next time.
             </p>
-            <label htmlFor="domino-np1" className="block text-xs font-bold tracking-wide text-muted-foreground">
+            <label htmlFor="domino-np1" className="mb-1.5 block text-xs font-semibold text-muted-foreground">
               new password (min 8 characters)
             </label>
             <input
@@ -350,7 +368,7 @@ export default function DominoLoginPage() {
               onChange={(e) => setNewPassword(e.target.value)}
               className={inputClass}
             />
-            <label htmlFor="domino-np2" className="block text-xs font-bold tracking-wide text-muted-foreground">
+            <label htmlFor="domino-np2" className="mb-1.5 block text-xs font-semibold text-muted-foreground">
               confirm password
             </label>
             <input
@@ -366,7 +384,11 @@ export default function DominoLoginPage() {
               <Button type="button" variant="ghost" className="min-h-[48px] flex-1 touch-manipulation" onClick={skipPasswordSetup}>
                 skip for now
               </Button>
-              <Button type="submit" className="min-h-[48px] flex-1 touch-manipulation" disabled={submitting}>
+              <Button
+                type="submit"
+                className="min-h-[52px] flex-1 touch-manipulation rounded-2xl text-base font-semibold"
+                disabled={submitting}
+              >
                 save password
               </Button>
             </div>
@@ -375,7 +397,7 @@ export default function DominoLoginPage() {
 
         {mode === 'password' && (
           <form onSubmit={handlePasswordLogin} className="mb-8 space-y-4">
-            <label htmlFor="domino-phone-pw" className="block text-xs font-bold tracking-wide text-muted-foreground">
+            <label htmlFor="domino-phone-pw" className="mb-1.5 block text-xs font-semibold text-muted-foreground">
               phone number
             </label>
             <input
@@ -388,7 +410,7 @@ export default function DominoLoginPage() {
               onChange={(e) => setPhone(e.target.value)}
               className={inputClass}
             />
-            <label htmlFor="domino-pw" className="block text-xs font-bold tracking-wide text-muted-foreground">
+            <label htmlFor="domino-pw" className="mb-1.5 block text-xs font-semibold text-muted-foreground">
               password
             </label>
             <input
@@ -400,18 +422,20 @@ export default function DominoLoginPage() {
               className={inputClass}
             />
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            <Button type="submit" className="min-h-[48px] w-full touch-manipulation" disabled={submitting || !phoneHasMinDigits(phone) || !password}>
+            <Button
+              type="submit"
+              className="min-h-[52px] w-full touch-manipulation rounded-2xl text-base font-semibold"
+              disabled={submitting || !phoneHasMinDigits(phone) || !password}
+            >
               {submitting ? 'signing in…' : 'sign in'}
             </Button>
-            <p className="text-center text-xs text-muted-foreground">
-              <button
-                type="button"
-                className="font-semibold text-primary underline underline-offset-2"
-                onClick={() => switchMode('otp')}
-              >
-                use iMessage code instead
-              </button>
-            </p>
+            <button
+              type="button"
+              className="w-full touch-manipulation py-1 text-sm text-muted-foreground"
+              onClick={() => switchMode('otp')}
+            >
+              use iMessage code instead
+            </button>
           </form>
         )}
 

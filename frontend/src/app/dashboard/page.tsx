@@ -15,7 +15,7 @@ import {
   markOnboardingDone,
 } from '@/features/domino/domino-onboarding';
 import { IcSearch, IcSort, IcX, IcStar, IcPin, IcShare, IcExt, IcPlus, IcClipboard, KindIcon } from '@/features/domino/domino-icons';
-import posthog from 'posthog-js';
+import { REFERRER_TOAST_KEY } from '@/features/domino/domino-invite';
 
 function useMagicLink(loginWithToken: (t: string) => Promise<void>) {
   const handled = useRef(false);
@@ -242,6 +242,7 @@ function SavedView() {
   const [detail, setDetail] = useState<Bookmark | null>(null);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [profileEmail, setProfileEmail] = useState<string | null>(null);
+  const [referrerToast, setReferrerToast] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -252,6 +253,17 @@ function SavedView() {
       setRawItems(items);
       const email = me?.email ?? null;
       setProfileEmail(email);
+      if (me?.referrer_display_name) {
+        try {
+          if (localStorage.getItem(REFERRER_TOAST_KEY) !== me.referrer_display_name) {
+            localStorage.setItem(REFERRER_TOAST_KEY, me.referrer_display_name);
+            setReferrerToast(`you joined through ${me.referrer_display_name}'s invite — you're connected.`);
+            posthog.capture('friend_auto_connected', { source: 'referral_signup' });
+          }
+        } catch {
+          /* ignore */
+        }
+      }
       if (!isOnboardingDone()) {
         if (items.length > 0 && email) markOnboardingDone();
         else setOnboardingOpen(true);
@@ -266,6 +278,12 @@ function SavedView() {
   const completeOnboarding = useCallback(() => {
     setOnboardingOpen(false);
   }, []);
+
+  useEffect(() => {
+    if (!referrerToast) return;
+    const t = window.setTimeout(() => setReferrerToast(null), 4000);
+    return () => window.clearTimeout(t);
+  }, [referrerToast]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -414,6 +432,17 @@ function SavedView() {
           onComplete={completeOnboarding}
           onEmailSaved={(email) => setProfileEmail(email)}
         />
+      )}
+      {referrerToast && (
+        <div style={{
+          position: 'fixed', left: '50%', bottom: 100, transform: 'translateX(-50%)',
+          background: 'var(--ink)', color: 'var(--bg)', padding: '10px 16px',
+          borderRadius: 12, fontSize: 'var(--dn-text-sm)', fontWeight: 500,
+          zIndex: 50, maxWidth: 'min(90vw, 360px)', textAlign: 'center',
+          animation: 'dnFadeIn 200ms ease',
+        }}>
+          {referrerToast}
+        </div>
       )}
       {addOpen && (
         <AddSheet

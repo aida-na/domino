@@ -44,6 +44,7 @@ class DominoItem(Base):
     digest_sent = Column(Boolean, default=False, nullable=False, server_default="false")
     is_pinned = Column(Boolean, default=False, nullable=False, server_default="false")
     is_favorited = Column(Boolean, default=False, nullable=False, server_default="false")
+    embedding = Column(JSON, nullable=True)  # Gemini embedding vector for semantic search
 
 
 class DominoOTP(Base):

@@ -15,6 +15,40 @@ export default function DominoPrivacyPage() {
   return (
     <DominoSubpage title="privacy policy">
       <p className="text-xs text-[#9A9080]">effective date: july 16, 2026</p>
+
+      <section className="space-y-3 border-b border-[#D1CDC0] pb-6">
+        <h2 className={h2Class}>the short version</h2>
+        <ul className="list-disc pl-5 space-y-2">
+          <li>
+            <strong className="font-semibold text-[#1A1208]">what we collect:</strong> your phone number
+            (that&apos;s your account) and whatever you choose to send us — links, notes, thoughts,
+            screenshots.
+          </li>
+          <li>
+            <strong className="font-semibold text-[#1A1208]">what we do with it:</strong> organize your
+            saves, connect them to each other, and send them back to you in a weekly digest.
+          </li>
+          <li>
+            <strong className="font-semibold text-[#1A1208]">what we never do:</strong> sell your data, use
+            your content to train AI models, or track you across other apps.
+          </li>
+          <li>
+            <strong className="font-semibold text-[#1A1208]">AI processing:</strong> your saves are processed
+            by AI (currently google gemini) only to deliver domino&apos;s features — summaries, connections,
+            digests. nothing more.
+          </li>
+          <li>
+            <strong className="font-semibold text-[#1A1208]">how to leave:</strong> reply STOP to stop
+            messages, delete saves anytime from the dashboard, or email{' '}
+            <a href="mailto:hello@dailylabs.co?subject=domino%20account%20deletion" className={linkClass}>
+              hello@dailylabs.co
+            </a>{' '}
+            to delete your account entirely.
+          </li>
+        </ul>
+        <p>the full policy below says the same things with the legal details filled in.</p>
+      </section>
+
       <p>
         at daily labs (&quot;domino,&quot; &quot;we,&quot; &quot;our,&quot; or &quot;us&quot;), your privacy
         is a priority. this privacy policy explains how we collect, use, share, and protect personal
@@ -38,8 +72,8 @@ export default function DominoPrivacyPage() {
           <ul className="list-disc pl-5 space-y-1">
             <li>
               <strong className="font-semibold text-[#1A1208]">message content:</strong> when you iMessage
-              domino — or save via the web dashboard or iOS app / Safari share extension — we receive what
-              you send — links, notes, thoughts, screenshots, and any other content you choose to share.
+              domino — or save via the web dashboard or iOS app / Safari share extension — we receive what you
+              send: links, notes, thoughts, screenshots, and any other content you choose to share.
             </li>
             <li>
               <strong className="font-semibold text-[#1A1208]">phone number:</strong> your phone number serves
@@ -72,8 +106,8 @@ export default function DominoPrivacyPage() {
             </li>
             <li>
               <strong className="font-semibold text-[#1A1208]">iOS app credentials:</strong> session tokens
-              are stored in the device Keychain (shared with the Safari share extension) so
-              you stay signed in. we do not use advertising identifiers or App Tracking Transparency.
+              are stored in the device Keychain (shared with the Safari share extension) so you stay signed
+              in. we do not use advertising identifiers or App Tracking Transparency.
             </li>
           </ul>
         </div>
@@ -139,9 +173,9 @@ export default function DominoPrivacyPage() {
           <li>
             <strong className="font-semibold text-[#1A1208]">service providers and subprocessors:</strong> we
             work with third-party companies to help operate, support, and improve the services — including
-            hosting (e.g. google cloud, supabase), messaging infrastructure (e.g. blooio / iMessage), ai processing
-            (e.g. google), and analytics. these providers process personal information on our behalf and only
-            as instructed by us.
+            hosting (e.g. google cloud, supabase), messaging infrastructure (blooio, for iMessage delivery),
+            ai processing (e.g. google), and analytics. these providers process personal information on our
+            behalf and only as instructed by us.
           </li>
           <li>
             <strong className="font-semibold text-[#1A1208]">legal purposes:</strong> if required by law,
@@ -184,10 +218,10 @@ export default function DominoPrivacyPage() {
             <strong className="font-semibold text-[#1A1208]">opt out of messages:</strong> reply STOP to stop
             receiving domino messages at any time.
           </li>
-            <li>
-              <strong className="font-semibold text-[#1A1208]">delete your saves:</strong> remove individual
-              saves from the web dashboard or iOS app.
-            </li>
+          <li>
+            <strong className="font-semibold text-[#1A1208]">delete your saves:</strong> remove individual
+            saves from the web dashboard or iOS app.
+          </li>
           <li>
             <strong className="font-semibold text-[#1A1208]">access and correction:</strong> request access to
             your personal information and ask us to correct inaccuracies.
@@ -202,9 +236,9 @@ export default function DominoPrivacyPage() {
           </li>
         </ul>
         <p>
-          to exercise these rights,{' '}
-          <a href="mailto:aidana@dailylabs.co?subject=domino%20privacy%20request" className={linkClass}>
-            email us
+          to exercise these rights, email{' '}
+          <a href="mailto:hello@dailylabs.co?subject=domino%20privacy%20request" className={linkClass}>
+            hello@dailylabs.co
           </a>
           .
         </p>
@@ -237,9 +271,9 @@ export default function DominoPrivacyPage() {
         <p>
           the services are not directed at children under 13. we do not knowingly collect personal information
           from children under 13. if you believe a child under 13 has provided us with personal information,
-          please{' '}
-          <a href="mailto:aidana@dailylabs.co?subject=children%20privacy" className={linkClass}>
-            contact us
+          please contact us at{' '}
+          <a href="mailto:hello@dailylabs.co?subject=children%20privacy" className={linkClass}>
+            hello@dailylabs.co
           </a>{' '}
           so we can delete it.
         </p>
@@ -302,9 +336,9 @@ export default function DominoPrivacyPage() {
         <div className="space-y-2">
           <h3 className={h3Class}>how to exercise these rights</h3>
           <p>
-            you can exercise your rights by{' '}
-            <a href="mailto:aidana@dailylabs.co?subject=CCPA%20request" className={linkClass}>
-              emailing us
+            email{' '}
+            <a href="mailto:hello@dailylabs.co?subject=CCPA%20request" className={linkClass}>
+              hello@dailylabs.co
             </a>{' '}
             with &quot;CCPA request&quot; in the subject line. we may need to verify your identity before
             responding, which could involve confirming information we already have about you. you may also
@@ -327,9 +361,9 @@ export default function DominoPrivacyPage() {
       <section className="space-y-3 pt-4 border-t border-[#D1CDC0]">
         <h2 className={h2Class}>12. contact us</h2>
         <p>
-          if you have questions, concerns, or requests about this policy:{' '}
-          <a href="mailto:aidana@dailylabs.co?subject=domino%20privacy" className={linkClass}>
-            email us
+          questions, concerns, or requests about this policy:{' '}
+          <a href="mailto:hello@dailylabs.co?subject=domino%20privacy" className={linkClass}>
+            hello@dailylabs.co
           </a>
         </p>
         <p className="text-xs text-[#9A9080]">daily labs · san francisco, ca</p>

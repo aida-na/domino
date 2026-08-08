@@ -9,6 +9,7 @@ from app.models.domino import DominoUser
 from app.services.discover import (
     get_discover_status,
     get_friends_trending,
+    get_global_trending,
     get_similar_taste_trending,
 )
 
@@ -43,5 +44,17 @@ async def friends_trending(
     db: AsyncSession = Depends(get_db),
 ):
     return await get_friends_trending(
+        current_user, db, window_days=window_days, limit=limit
+    )
+
+
+@router.get("/global-trending")
+async def global_trending(
+    window_days: int = Query(default=7, ge=1, le=30),
+    limit: int = Query(default=20, ge=1, le=50),
+    current_user: DominoUser = Depends(get_domino_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await get_global_trending(
         current_user, db, window_days=window_days, limit=limit
     )

@@ -82,6 +82,9 @@ async def backfill_shared_saves(db: AsyncSession, user: DominoUser) -> int:
 async def after_item_saved(db: AsyncSession, user: DominoUser, item: DominoItem) -> None:
     await upsert_shared_save(db, user, item)
     await build_taste_profile(user.phone, db)
+    from app.services.search import maybe_embed_item
+
+    await maybe_embed_item(item)
 
 
 async def after_item_deleted(db: AsyncSession, user_phone: str, item_id) -> None:

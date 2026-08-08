@@ -115,6 +115,10 @@ struct DominoAPI {
         try await client.request("GET", path: "discover/similar-taste", token: token)
     }
 
+    func getGlobalTrending(token: String) async throws -> DiscoverGlobalResponse {
+        try await client.request("GET", path: "discover/global-trending", token: token)
+    }
+
     func getFriendsTrending(token: String) async throws -> DiscoverFriendsResponse {
         try await client.request("GET", path: "discover/friends-trending", token: token)
     }
@@ -129,15 +133,15 @@ struct DominoAPI {
         try await client.request("GET", path: "friends/pending", token: token)
     }
 
-    func sendFriendRequest(token: String, body: FriendRequestBody) async throws -> OKResponse {
+    func sendFriendRequest(token: String, body: FriendRequestBody) async throws -> FriendRequestResponse {
         try await client.request("POST", path: "friends/request", token: token, body: body)
     }
 
-    func acceptFriendRequest(token: String, requestId: String) async throws -> OKResponse {
+    func acceptFriendRequest(token: String, requestId: String) async throws -> FriendRequestResponse {
         try await client.request("POST", path: "friends/accept", token: token, body: FriendActionBody(requestId: requestId))
     }
 
-    func declineFriendRequest(token: String, requestId: String) async throws -> OKResponse {
+    func declineFriendRequest(token: String, requestId: String) async throws -> LogoutResponse {
         try await client.request("POST", path: "friends/decline", token: token, body: FriendActionBody(requestId: requestId))
     }
 

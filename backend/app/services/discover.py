@@ -19,6 +19,7 @@ from app.services.taste_profile import (
 DEFAULT_WINDOW_DAYS = 7
 DEFAULT_LIMIT = 20
 MIN_SIMILAR_SAVERS = 2
+SPARSE_NETWORK_USER_THRESHOLD = 50
 
 
 def _window_start(days: int) -> datetime:
@@ -88,6 +89,45 @@ async def get_discover_status(user: DominoUser, db: AsyncSession) -> dict:
     }
 
 
+async def _opted_in_user_count(db: AsyncSession) -> int:
+    result = await db.execute(
+        select(func.count()).select_from(DominoUser).where(DominoUser.discover_opt_in.is_(True))
+    )
+    return int(result.scalar_one() or 0)
+
+
+def _min_similar_savers(db_count: int) -> int:
+    if db_count < SPARSE_NETWORK_USER_THRESHOLD:
+        return 1
+    return MIN_SIMILAR_SAVERS
+
+
+async def get_global_trending(
+    user: DominoUser,
+    db: AsyncSession,
+    *,
+    window_days: int = DEFAULT_WINDOW_DAYS,
+    limit: int = DEFAULT_LIMIT,
+) -> dict:
+    """Trending saves across all opted-in users — no friends or taste gate."""
+    since = _window_start(window_days)
+    result = await db.execute(
+        select(DominoSharedSave)
+        .join(DominoUser, DominoUser.phone == DominoSharedSave.user_phone)
+        .where(
+            DominoSharedSave.saved_at >= since,
+            DominoSharedSave.user_phone != user.phone,
+            DominoUser.discover_opt_in.is_(True),
+        )
+    )
+    items = _aggregate_trending(
+        list(result.scalars.all()),
+        limit=limit,
+        min_savers=1,
+    )
+    return {"items": items, "cohort_label": "domino users"}
+
+
 async def get_similar_taste_trending(
     user: DominoUser,
     db: AsyncSession,
@@ -103,6 +143,7 @@ async def get_similar_taste_trending(
         }
 
     since = _window_start(window_days)
+    min_savers = _min_similar_savers(await _opted_in_user_count(db))
     similar = await find_similar_users(user.phone, db)
     cohort_label = "people with similar taste"
 
@@ -116,7 +157,7 @@ async def get_similar_taste_trending(
         items = _aggregate_trending(
             list(result.scalars().all()),
             limit=limit,
-            min_savers=MIN_SIMILAR_SAVERS,
+            min_savers=min_savers,
         )
         return {"items": items, "cohort_label": cohort_label, "opt_in_required": False}
 
@@ -142,7 +183,7 @@ async def get_similar_taste_trending(
     items = _aggregate_trending(
         list(result.scalars().all()),
         limit=limit,
-        min_savers=MIN_SIMILAR_SAVERS,
+        min_savers=min_savers,
     )
     return {"items": items, "cohort_label": cohort_label, "opt_in_required": False}
 

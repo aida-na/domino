@@ -7,6 +7,7 @@ enum LoginMode: String, CaseIterable {
 
 struct LoginView: View {
     @Environment(AuthSession.self) private var auth
+    var onBack: (() -> Void)?
     @State private var mode: LoginMode = .otp
     @State private var phone = "+1"
     @State private var code = ""
@@ -26,10 +27,31 @@ struct LoginView: View {
 
     enum OTPStep { case phone, code, setPassword }
 
+    init(onBack: (() -> Void)? = nil) {
+        self.onBack = onBack
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                Spacer(minLength: 16)
+                if let onBack {
+                    HStack {
+                        Button(action: onBack) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 14, weight: .semibold))
+                                Text("back")
+                            }
+                            .font(.dominoBody(14))
+                            .foregroundStyle(DominoColors.ink3)
+                        }
+                        .buttonStyle(.plain)
+                        Spacer()
+                    }
+                    .padding(.top, 4)
+                }
+
+                Spacer(minLength: onBack == nil ? 16 : 0)
 
                 authHeader
 
@@ -239,9 +261,9 @@ struct LoginView: View {
             return nil
         case .phone:
             if mode == .password {
-                return "use the password you set after your first iMessage sign-in."
+                return "enter the password you saved after your first sign-in."
             }
-            return "we’ll iMessage you a one-time code."
+            return "enter your phone — we'll iMessage you a code."
         }
     }
 
@@ -295,7 +317,11 @@ struct LoginView: View {
                         try await requestOTP(normalized: normalized)
                         DominoAnalytics.capture("otp_requested")
                     } else {
-                        let tokens = try await api.verifyOTP(phone: normalized, code: code)
+                        let ref = UserDefaults.standard.string(forKey: AppConfig.inviteRefKey)
+                        let tokens = try await api.verifyOTP(phone: normalized, code: code, ref: ref)
+                        if ref != nil {
+                            UserDefaults.standard.removeObject(forKey: AppConfig.inviteRefKey)
+                        }
                         try await auth.completeLogin(tokens: tokens, promptPasswordSetup: true)
                         DominoAnalytics.capture("otp_verified", properties: ["has_password": tokens.hasPassword])
                         if !tokens.hasPassword {
@@ -330,8 +356,8 @@ struct LoginView: View {
             return
         }
         do {
-            _ = try await api.joinWaitlist(email: email)
-            DominoAnalytics.capture("waitlist_joined", properties: ["referral_present": false])
+            _ = try await api.joinWaitlist(email: email, ref: UserDefaults.standard.string(forKey: AppConfig.inviteRefKey))
+            DominoAnalytics.capture("waitlist_joined", properties: ["referral_present": UserDefaults.standard.string(forKey: AppConfig.inviteRefKey) != nil])
             waitlistNotice = "you're on the list — we'll be in touch."
             waitlistEmail = ""
         } catch {

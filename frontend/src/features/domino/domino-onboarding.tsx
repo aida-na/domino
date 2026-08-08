@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
-import { dominoApi } from '@/features/domino/domino-api';
+import { dominoApi, type DominoMeResponse } from '@/features/domino/domino-api';
+import { inviteUrlFor, shareInvite } from '@/features/domino/domino-invite';
 import { IcChevron, IcX } from '@/features/domino/domino-icons';
 import posthog from 'posthog-js';
 
@@ -32,7 +33,7 @@ export function markOnboardingDone(): void {
   }
 }
 
-type Step = 'save' | 'email';
+type Step = 'save' | 'email' | 'invite';
 
 /** Minimal B&W shelf — three cards, no color, no ornaments. */
 function SaveIllustration() {
@@ -233,7 +234,9 @@ export function DominoOnboardingSheet({
   )
   const [email, setEmail] = useState(initialEmail ?? '');
   const [saving, setSaving] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [profile, setProfile] = useState<DominoMeResponse | null>(null);
 
   function finish() {
     markOnboardingDone();
@@ -242,13 +245,16 @@ export function DominoOnboardingSheet({
 
   useEffect(() => {
     if (!hasItems || step !== 'save') return;
-    if (hasEmail) {
-      markOnboardingDone();
-      onComplete();
-      return;
-    }
-    setStep('email');
-  }, [hasItems, hasEmail, step, onComplete]);
+    const next: Step = hasEmail ? 'invite' : 'email';
+    // Auto-advance when the first save lands while the save step is showing.
+    const id = requestAnimationFrame(() => setStep(next));
+    return () => cancelAnimationFrame(id);
+  }, [hasItems, hasEmail, step]);
+
+  useEffect(() => {
+    if (step !== 'invite') return;
+    dominoApi.getMe(token).then(setProfile).catch(() => {});
+  }, [step, token]);
 
   async function saveEmail() {
     const trimmed = email.trim();
@@ -259,7 +265,7 @@ export function DominoOnboardingSheet({
       const me = await dominoApi.updateMe(token, { email: trimmed, digest_opted_out: false });
       posthog.capture('digest_email_saved');
       onEmailSaved?.(me.email ?? trimmed);
-      finish();
+      setStep('invite');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'couldn’t save email');
     } finally {
@@ -267,8 +273,9 @@ export function DominoOnboardingSheet({
     }
   }
 
+  const stepIndex = step === 'save' ? 0 : step === 'email' ? 1 : 2;
   const stepLabel = includeSaveStep ? (
-    <StepDots current={step === 'save' ? 0 : 1} total={2} />
+    <StepDots current={stepIndex} total={3} />
   ) : (
     <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-4)', letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>
       almost
@@ -281,7 +288,7 @@ export function DominoOnboardingSheet({
         stepLabel={stepLabel}
         stepSwitch={
           includeSaveStep ? (
-            <StepSwitch onNext={() => (hasEmail ? finish() : setStep('email'))} />
+            <StepSwitch onNext={() => (hasEmail ? setStep('invite') : setStep('email'))} />
           ) : undefined
         }
         onClose={finish}
@@ -317,6 +324,89 @@ export function DominoOnboardingSheet({
 
         <button type="button" onClick={openDominoIMessage} style={{ ...primaryBtn(), marginTop: 20 }}>
           open iMessage
+        </button>
+      </ModalShell>
+    );
+  }
+
+  if (step === 'invite') {
+    return (
+      <ModalShell
+        stepLabel={stepLabel}
+        stepSwitch={includeSaveStep ? <StepSwitch onBack={() => setStep('email')} /> : undefined}
+        onClose={finish}
+        illustration={<SaveIllustration />}
+      >
+        <h2
+          id="dn-onboarding-title"
+          style={{
+            margin: '0 0 6px',
+            fontFamily: 'var(--font-serif)',
+            fontSize: 26,
+            fontWeight: 700,
+            letterSpacing: '-0.03em',
+            lineHeight: 1.15,
+            color: 'var(--ink)',
+            textAlign: 'center',
+          }}
+        >
+          invite a friend
+        </h2>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 15,
+            lineHeight: 1.45,
+            color: 'var(--ink-2)',
+            textAlign: 'center',
+            textWrap: 'balance',
+          }}
+        >
+          share your link — you&apos;ll auto-connect when they join.
+        </p>
+        <button
+          type="button"
+          disabled={sharing}
+          onClick={() => {
+            void (async () => {
+              setSharing(true);
+              try {
+                let me = profile;
+                if (!me?.invite_code) {
+                  me = await dominoApi.getMe(token);
+                  setProfile(me);
+                }
+                const url = inviteUrlFor(me);
+                if (!url) return;
+                posthog.capture('invite_shared', { source: 'onboarding' });
+                await shareInvite(url);
+              } catch (e) {
+                if (e instanceof DOMException && e.name === 'AbortError') return;
+              } finally {
+                setSharing(false);
+              }
+            })();
+          }}
+          style={{ ...primaryBtn(sharing), marginTop: 20 }}
+        >
+          {sharing ? 'sharing…' : 'share invite'}
+        </button>
+        <button
+          type="button"
+          onClick={finish}
+          style={{
+            width: '100%',
+            marginTop: 12,
+            height: 44,
+            border: 0,
+            background: 'transparent',
+            color: 'var(--ink-3)',
+            fontSize: 14,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          skip for now
         </button>
       </ModalShell>
     );

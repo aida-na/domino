@@ -5,6 +5,7 @@ struct DiscoverView: View {
     @Environment(AppNavigation.self) private var nav
     @State private var items: [Item] = []
     @State private var discoverStatus: DiscoverStatusResponse?
+    @State private var globalTrending: DiscoverGlobalResponse?
     @State private var similarTrending: DiscoverSimilarResponse?
     @State private var friendsTrending: DiscoverFriendsResponse?
     @State private var isLoading = true
@@ -57,22 +58,6 @@ struct DiscoverView: View {
                         if similarTrending?.optInRequired == true || friendsTrending?.optInRequired == true {
                             optInBanner
                         }
-
-                        trendingSection(
-                            title: "trending with similar taste",
-                            meta: similarTrending.map { "\($0.items.count) links" } ?? "",
-                            items: similarTrending?.items ?? [],
-                            countLabel: { "\($0) people with similar taste" },
-                            empty: similarEmptyMessage
-                        )
-
-                        trendingSection(
-                            title: "trending among friends",
-                            meta: friendsTrending.map { "\($0.friendCount) friends" } ?? "",
-                            items: friendsTrending?.items ?? [],
-                            countLabel: { n in n == 1 ? "1 friend saved this" : "\(n) friends saved this" },
-                            empty: friendsEmptyMessage
-                        )
 
                         if !topics.isEmpty {
                             section(title: "my collections", meta: "\(topics.count) folders") {
@@ -148,7 +133,35 @@ struct DiscoverView: View {
                             }
                         }
 
-                        if items.isEmpty && (similarTrending?.items.isEmpty ?? true) && (friendsTrending?.items.isEmpty ?? true) {
+                        trendingSection(
+                            title: "trending on domino",
+                            meta: globalTrending.map { "\($0.items.count) links" } ?? "",
+                            items: globalTrending?.items ?? [],
+                            countLabel: { n in n == 1 ? "1 person saved this" : "\(n) people saved this" },
+                            empty: "Nothing trending yet this week — check back soon."
+                        )
+
+                        trendingSection(
+                            title: "trending with similar taste",
+                            meta: similarTrending.map { "\($0.items.count) links" } ?? "",
+                            items: similarTrending?.items ?? [],
+                            countLabel: { "\($0) people with similar taste" },
+                            empty: similarEmptyMessage
+                        )
+
+                        trendingSection(
+                            title: "trending among friends",
+                            meta: friendsTrending.map { "\($0.friendCount) friends" } ?? "",
+                            items: friendsTrending?.items ?? [],
+                            countLabel: { n in n == 1 ? "1 friend saved this" : "\(n) friends saved this" },
+                            empty: friendsEmptyMessage,
+                            showInviteCTA: (discoverStatus?.friendCount ?? 0) == 0 && discoverStatus?.optIn == true
+                        )
+
+                        if items.isEmpty
+                            && (globalTrending?.items.isEmpty ?? true)
+                            && (similarTrending?.items.isEmpty ?? true)
+                            && (friendsTrending?.items.isEmpty ?? true) {
                             emptyState
                         }
                     }
@@ -232,26 +245,46 @@ struct DiscoverView: View {
 
     private var friendsEmptyMessage: String {
         guard discoverStatus?.optIn == true else { return "Turn on discover sharing in profile settings." }
-        guard (discoverStatus?.friendCount ?? 0) > 0 else { return "Add friends in profile settings." }
+        guard (discoverStatus?.friendCount ?? 0) > 0 else { return "Invite someone — you'll auto-connect when they join." }
         return "No friend saves this week yet."
+    }
+
+    private var inviteShareText: String {
+        let url = auth.profile?.inviteURL ?? "https://domino.fyi/login"
+        return "i use domino to save links over iMessage. join with my link and we'll connect automatically:\n\(url)"
     }
 
     private func trendingSection(
         title: String,
         meta: String,
         items: [DiscoverTrendItem],
-        countLabel: (Int) -> String,
-        empty: String
+        countLabel: @escaping (Int) -> String,
+        empty: String,
+        showInviteCTA: Bool = false
     ) -> some View {
         section(title: title, meta: meta.isEmpty ? " " : meta) {
             if items.isEmpty {
-                Text(empty)
-                    .font(.dominoBody(13))
-                    .foregroundStyle(DominoColors.ink3)
-                    .padding(16)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(DominoColors.paper)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(empty)
+                        .font(.dominoBody(13))
+                        .foregroundStyle(DominoColors.ink3)
+                    if showInviteCTA {
+                        ShareLink(item: inviteShareText) {
+                            Text("invite someone")
+                                .font(.dominoBody(13, weight: .semibold))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(DominoColors.ink)
+                                .foregroundStyle(DominoColors.bg)
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(DominoColors.paper)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             } else {
                 VStack(spacing: 0) {
                     ForEach(items) { item in
@@ -329,10 +362,12 @@ struct DiscoverView: View {
         isLoading = items.isEmpty
         async let fetchedItems = api.getItems(token: token, limit: 500)
         async let status = api.getDiscoverStatus(token: token)
+        async let global = api.getGlobalTrending(token: token)
         async let similar = api.getSimilarTasteTrending(token: token)
         async let friends = api.getFriendsTrending(token: token)
         items = (try? await fetchedItems) ?? []
         discoverStatus = try? await status
+        globalTrending = try? await global
         similarTrending = try? await similar
         friendsTrending = try? await friends
         isLoading = false

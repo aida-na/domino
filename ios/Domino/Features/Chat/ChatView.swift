@@ -15,7 +15,7 @@ struct ChatView: View {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 12) {
                             if messages.isEmpty {
-                                Text("ask anything about what you've saved via iMessage.")
+                                Text("search or ask anything about what you've saved via iMessage.")
                                     .font(.subheadline)
                                     .foregroundStyle(DominoColors.ink3)
                                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -36,7 +36,7 @@ struct ChatView: View {
                 }
 
                 HStack(spacing: 12) {
-                    TextField("ask about your saves…", text: $input, axis: .vertical)
+                    TextField("search or ask your domino…", text: $input, axis: .vertical)
                         .lineLimit(1...4)
                         .padding(12)
                         .background(DominoColors.paper)
@@ -56,7 +56,7 @@ struct ChatView: View {
                 .background(DominoColors.bg)
             }
             .background(DominoColors.bg)
-            .navigationTitle("chat")
+            .navigationTitle("ask")
         }
     }
 
@@ -73,15 +73,67 @@ struct ChatView: View {
                     .background(message.role == .user ? DominoColors.accent : DominoColors.paper)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
 
-                if let sources = message.sources, !sources.isEmpty {
-                    Text("\(sources.count) source\(sources.count == 1 ? "" : "s")")
+                if message.role == .assistant, let sources = message.sources, !sources.isEmpty {
+                    sourceCards(sources)
+                }
+            }
+            .frame(maxWidth: message.role == .assistant ? .infinity : nil, alignment: message.role == .user ? .trailing : .leading)
+
+            if message.role == .assistant { Spacer(minLength: 48) }
+        }
+    }
+
+    @ViewBuilder
+    private func sourceCards(_ sources: [ChatSource]) -> some View {
+        VStack(spacing: 6) {
+            ForEach(sources) { source in
+                if source.isLink, let url = URL(string: source.rawInput) {
+                    Link(destination: url) {
+                        sourceCardLabel(source, icon: "link")
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Button {
+                        input = "Tell me about: \"\(source.displayLabel)\""
+                    } label: {
+                        sourceCardLabel(source, icon: "note.text")
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func sourceCardLabel(_ source: ChatSource, icon: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(DominoColors.accent)
+                .frame(width: 16, height: 16)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(source.displayLabel)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(DominoColors.ink)
+                    .multilineTextAlignment(.leading)
+
+                if let topic = source.topic, !topic.isEmpty {
+                    Text(topic)
                         .font(.caption2)
                         .foregroundStyle(DominoColors.ink3)
                 }
             }
 
-            if message.role == .assistant { Spacer(minLength: 48) }
+            Spacer(minLength: 0)
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(DominoColors.paper)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(DominoColors.hairline))
     }
 
     private func send() async {

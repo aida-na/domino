@@ -95,6 +95,9 @@ async def _apply_note_enrichment(item: DominoItem) -> None:
         item.summary = enriched["summary"]
     if enriched["key_ideas"]:
         item.key_ideas = enriched["key_ideas"]
+    from app.services.search import maybe_embed_item
+
+    await maybe_embed_item(item)
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────

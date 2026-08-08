@@ -10,6 +10,7 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+DEFAULT_EMBEDDING_MODEL = "text-embedding-004"
 
 _semaphore = asyncio.Semaphore(20)
 _client: genai.Client | None = None
@@ -144,6 +145,41 @@ async def generate_chat_with_retry(
                 base = min(32, 2 ** (attempt + 1))
                 wait = random.uniform(base / 2, base)
                 logger.warning("Gemini rate limit (chat), retrying in %.1fs", wait)
+                await asyncio.sleep(wait)
+            else:
+                raise
+
+
+async def embed_text_with_retry(
+    text: str,
+    *,
+    model: str = DEFAULT_EMBEDDING_MODEL,
+    max_retries: int = 3,
+) -> list[float]:
+    """Return an embedding vector for the given text."""
+    client = get_gemini_client()
+    contents = text.strip()
+    if not contents:
+        raise ValueError("Cannot embed empty text")
+
+    for attempt in range(max_retries + 1):
+        try:
+            async with _semaphore:
+                response = await client.aio.models.embed_content(
+                    model=model,
+                    contents=contents,
+                )
+            embeddings = response.embeddings or []
+            if not embeddings or not embeddings[0].values:
+                raise ValueError("Empty embedding response")
+            return list(embeddings[0].values)
+        except Exception as e:
+            err_str = str(e)
+            is_rate_limit = "429" in err_str or "RESOURCE_EXHAUSTED" in err_str.upper()
+            if is_rate_limit and attempt < max_retries:
+                base = min(32, 2 ** (attempt + 1))
+                wait = random.uniform(base / 2, base)
+                logger.warning("Gemini rate limit (embed), retrying in %.1fs", wait)
                 await asyncio.sleep(wait)
             else:
                 raise

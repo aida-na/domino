@@ -13,6 +13,16 @@ struct DiscoverTrendItem: Codable, Identifiable, Hashable {
     }
 }
 
+struct DiscoverGlobalResponse: Codable {
+    let items: [DiscoverTrendItem]
+    let cohortLabel: String
+
+    enum CodingKeys: String, CodingKey {
+        case items
+        case cohortLabel = "cohort_label"
+    }
+}
+
 struct DiscoverSimilarResponse: Codable {
     let items: [DiscoverTrendItem]
     let cohortLabel: String
@@ -113,5 +123,17 @@ struct FriendActionBody: Encodable {
 
     enum CodingKeys: String, CodingKey {
         case requestId = "request_id"
+    }
+}
+
+struct FriendRequestResponse: Codable {
+    let requestId: String
+    let status: String
+    let user: FriendRequestUser?
+
+    enum CodingKeys: String, CodingKey {
+        case requestId = "request_id"
+        case status
+        case user
     }
 }

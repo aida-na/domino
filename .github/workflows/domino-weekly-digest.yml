@@ -1,18 +1,29 @@
 name: Weekly Digest
 
+# Prefer Google Cloud Scheduler (backend/scripts/setup-digest-scheduler.sh) for production.
+# GitHub hosted runners can fail with "job was not acquired by Runner" — that is a
+# GitHub-side error; the digest API is never called. Keep workflow_dispatch for manual runs.
 on:
-  schedule:
-    # Every 15 minutes so each user's local Sunday + digest_time window can match
-    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 jobs:
   trigger-digest:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Trigger weekly digest
         run: |
-          curl -X POST "${{ secrets.DOMINO_API_URL }}/api/v1/digest/trigger" \
+          set -euo pipefail
+          if [[ -z "${{ secrets.DOMINO_API_URL }}" || -z "${{ secrets.DOMINO_INTERNAL_SECRET }}" ]]; then
+            echo "Missing DOMINO_API_URL or DOMINO_INTERNAL_SECRET repo secrets." >&2
+            exit 1
+          fi
+          response="$(curl -sS -X POST "${{ secrets.DOMINO_API_URL }}/api/v1/digest/trigger" \
             -H "X-Internal-Secret: ${{ secrets.DOMINO_INTERNAL_SECRET }}" \
             -H "Content-Type: application/json" \
-            --fail
+            --retry 3 \
+            --retry-delay 10 \
+            --max-time 540 \
+            -w "\nHTTP %{http_code}")"
+          echo "$response"
+          echo "$response" | grep -q "HTTP 2" || exit 1

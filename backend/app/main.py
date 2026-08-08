@@ -32,6 +32,8 @@ async def _apply_startup_schema() -> None:
 
                 async with engine.begin() as conn:
                     await conn.run_sync(Base.metadata.create_all)
+                    with suppress(Exception):
+                        await conn.execute(text("ALTER TABLE domino_items ADD COLUMN embedding JSON"))
                 logger.info("Startup schema applied (SQLite create_all)")
                 return
 
@@ -152,6 +154,7 @@ async def _apply_startup_schema() -> None:
                     "ALTER TABLE domino_users ADD COLUMN IF NOT EXISTS display_name VARCHAR(32)",
                     "ALTER TABLE domino_waitlist ADD COLUMN IF NOT EXISTS referred_by VARCHAR",
                     "ALTER TABLE domino_items ADD COLUMN IF NOT EXISTS topics TEXT[]",
+                    "ALTER TABLE domino_items ADD COLUMN IF NOT EXISTS embedding JSONB",
                 ):
                     await conn.execute(text(stmt))
                 # Backfill topics from legacy single topic when empty

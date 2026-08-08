@@ -27,8 +27,8 @@ open Domino.xcodeproj
 | **Auth** | iMessage OTP, password, magic link; Keychain session |
 | **saved** | Masonry grid, search/filter/sort, star/delete, add sheet |
 | **map** | Topic hub graph |
+| **ask** | Natural-language Q&A over saves with source links |
 | **discover** | Collections + this week |
-| **chat** | RAG chat (available in codebase; not in bottom nav — matches web) |
 | **me** | Profile, edit (email/digest/password), invite share, sign out |
 | **Fonts** | Figtree (body) + Newsreader (display/wordmark) |
 | **App icon** | Burnt-orange domino tile in `AppIcon.appiconset` |

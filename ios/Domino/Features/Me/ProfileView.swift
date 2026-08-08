@@ -104,6 +104,11 @@ struct ProfileView: View {
                 Text(auth.profile?.email?.isEmpty == false ? (auth.profile?.email ?? "") : "add email for digest")
                     .font(.subheadline)
                     .foregroundStyle(DominoColors.ink3)
+                if let joined = auth.profile?.friendsJoinedCount, joined > 0 {
+                    Text("\(joined) joined via your invite")
+                        .font(.caption)
+                        .foregroundStyle(DominoColors.ink3)
+                }
             }
             Spacer()
         }
@@ -377,7 +382,7 @@ struct InviteShareSheet: View {
 
     private var shareText: String {
         let url = inviteURL ?? "https://domino.fyi/login"
-        return "i use domino to save links & notes over iMessage — here's your invite:\n\(url)"
+        return "i use domino to save links over iMessage. join with my link and we'll connect automatically:\n\(url)"
     }
 
     var body: some View {
@@ -398,7 +403,7 @@ struct InviteShareSheet: View {
                 }
 
                 Button {
-                    UIPasteboard.general.string = "join me on domino — your second brain via iMessage\n\(inviteURL ?? "https://domino.fyi/login")"
+                    UIPasteboard.general.string = "join me on domino — save links over iMessage. we'll connect automatically:\n\(inviteURL ?? "https://domino.fyi/login")"
                     notice = "invite copied"
                 } label: {
                     labelButton("copy invite", systemImage: "doc.on.doc", filled: false)
@@ -625,27 +630,32 @@ struct FriendsSheet: View {
     @State private var phone = ""
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var showManualAdd = false
 
     private let api = DominoAPI()
+
+    private var inviteShareText: String {
+        let url = auth.profile?.inviteURL ?? "https://domino.fyi/login"
+        return "i use domino to save links over iMessage. join with my link and we'll connect automatically:\n\(url)"
+    }
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("add friend") {
-                    HStack {
-                        TextField("invite code", text: $inviteCode)
-                            .textInputAutocapitalization(.never)
-                        Button("add") { Task { await sendRequest(useInvite: true) } }
-                    }
-                    HStack {
-                        TextField("phone", text: $phone)
-                            .keyboardType(.phonePad)
-                        Button("add") { Task { await sendRequest(useInvite: false) } }
+                Section {
+                    Text("Share your invite link — you'll auto-connect when they join.")
+                        .font(.dominoBody(13))
+                        .foregroundStyle(DominoColors.ink3)
+                    ShareLink(item: inviteShareText) {
+                        Text("share invite link")
+                            .font(.dominoBody(15, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
                     }
                 }
 
                 if let pending, !pending.incoming.isEmpty {
-                    Section("incoming") {
+                    Section("incoming requests") {
                         ForEach(pending.incoming) { req in
                             HStack {
                                 Text(req.user.displayName)
@@ -659,7 +669,7 @@ struct FriendsSheet: View {
 
                 Section("friends (\(friends.count))") {
                     if friends.isEmpty {
-                        Text("No friends yet")
+                        Text("No friends yet — share your invite link above.")
                             .foregroundStyle(DominoColors.ink3)
                     } else {
                         ForEach(friends) { friend in
@@ -670,6 +680,39 @@ struct FriendsSheet: View {
                                     Task { await remove(friend.friendshipId) }
                                 }
                             }
+                        }
+                    }
+                }
+
+                if let pending, !pending.outgoing.isEmpty {
+                    Section("pending") {
+                        ForEach(pending.outgoing) { req in
+                            HStack {
+                                Text(req.user.displayName)
+                                    .foregroundStyle(DominoColors.ink3)
+                                Spacer()
+                                Button("cancel") { Task { await decline(req.requestId) } }
+                            }
+                        }
+                    }
+                }
+
+                Section {
+                    Button(showManualAdd ? "hide manual add" : "already on domino? add by code or phone") {
+                        showManualAdd.toggle()
+                    }
+                    .font(.dominoBody(13, weight: .semibold))
+                    .foregroundStyle(DominoColors.ink3)
+                    if showManualAdd {
+                        HStack {
+                            TextField("invite code", text: $inviteCode)
+                                .textInputAutocapitalization(.never)
+                            Button("add") { Task { await sendRequest(useInvite: true) } }
+                        }
+                        HStack {
+                            TextField("phone", text: $phone)
+                                .keyboardType(.phonePad)
+                            Button("add") { Task { await sendRequest(useInvite: false) } }
                         }
                     }
                 }
@@ -711,7 +754,7 @@ struct FriendsSheet: View {
         errorMessage = nil
         do {
             let body = FriendRequestBody(
-                phone: useInvite ? nil : phone,
+                phone: useInvite ? nil : PhoneNormalizer.normalize(phone),
                 inviteCode: useInvite ? inviteCode : nil
             )
             _ = try await api.sendFriendRequest(token: token, body: body)
