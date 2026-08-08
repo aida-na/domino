@@ -89,7 +89,13 @@ def _raise_for_blooio(resp: httpx.Response, *, action: str) -> None:
     )
 
 
-def send_message(to: str, body: str, *, attachments: list[str] | None = None) -> dict[str, Any] | None:
+def send_message(
+    to: str,
+    body: str,
+    *,
+    attachments: list[str] | None = None,
+    pin_from_number: bool = True,
+) -> dict[str, Any] | None:
     """
     Send an iMessage/SMS via Blooio.
     Falls back to console print when credentials are missing (local dev).
@@ -117,28 +123,63 @@ def send_message(to: str, body: str, *, attachments: list[str] | None = None) ->
         payload["attachments"] = attachments
 
     from_number = (settings.BLOOIO_PHONE_NUMBER or "").strip()
-    # Pin when configured — one hop, no auto-select → pin retry round-trip.
-    if from_number:
+    if pin_from_number and from_number:
         payload["from_number"] = from_number
 
     url = f"{BLOOIO_API_BASE}/chats/{_chat_path(to)}/messages"
     t0 = time.monotonic()
+    max_attempts = 3
+    retryable_status = {408, 429, 500, 502, 503, 504}
 
     try:
         client = _client()
-        resp = client.post(url, headers=_auth_headers(), json=payload)
+        resp: httpx.Response | None = None
+        for attempt in range(1, max_attempts + 1):
+            try:
+                resp = client.post(url, headers=_auth_headers(), json=payload)
+            except httpx.RequestError as e:
+                if attempt >= max_attempts:
+                    raise BlooioError(f"Blooio send_message network error: {e}") from e
+                logger.warning(
+                    "Blooio send_message network error to %s (attempt %d/%d): %s",
+                    to[-4:],
+                    attempt,
+                    max_attempts,
+                    e,
+                )
+                time.sleep(0.4 * attempt)
+                continue
 
-        # If pin failed (number not on key), fall back to pool auto-select once
-        if not resp.is_success and from_number and resp.status_code in {400, 403, 503}:
+            # If pin failed (number not on key), fall back to pool auto-select once
+            if (
+                not resp.is_success
+                and pin_from_number
+                and from_number
+                and resp.status_code in {400, 403, 503}
+            ):
+                logger.warning(
+                    "Blooio from_number=%s failed (%s); retrying auto-select. body=%s",
+                    from_number,
+                    resp.status_code,
+                    (resp.text or "")[:300],
+                )
+                payload.pop("from_number", None)
+                resp = client.post(url, headers=_auth_headers(), json=payload)
+
+            if resp.is_success or resp.status_code not in retryable_status or attempt >= max_attempts:
+                break
+
             logger.warning(
-                "Blooio from_number=%s failed (%s); retrying auto-select. body=%s",
-                from_number,
+                "Blooio send_message retryable status %s to %s (attempt %d/%d) body=%s",
                 resp.status_code,
+                to[-4:],
+                attempt,
+                max_attempts,
                 (resp.text or "")[:300],
             )
-            payload.pop("from_number", None)
-            resp = client.post(url, headers=_auth_headers(), json=payload)
+            time.sleep(0.4 * attempt)
 
+        assert resp is not None
         _raise_for_blooio(resp, action="send_message")
         data = resp.json()
         logger.info(
@@ -151,9 +192,10 @@ def send_message(to: str, body: str, *, attachments: list[str] | None = None) ->
         return data
     except BlooioError as e:
         logger.error(
-            "Blooio send_message to %s after %dms: %s body=%s",
+            "Blooio send_message to %s after %dms: status=%s %s body=%s",
             to[-4:],
             int((time.monotonic() - t0) * 1000),
+            e.status_code,
             e,
             e.body,
         )

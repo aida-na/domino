@@ -176,7 +176,10 @@ OTP_SEND_FAILED = "couldn't send your sign-in code. try again shortly."
 async def _send_otp_message(phone: str, body: str) -> None:
     """Send OTP synchronously so failures surface to the client."""
     try:
-        await asyncio.to_thread(_send_message, phone, body)
+        from app.services.blooio import send_message
+
+        # OTP uses Blooio pool auto-select — pinned from_number often 403/503 on Cloud Run.
+        await asyncio.to_thread(send_message, phone, body, pin_from_number=False)
     except Exception as e:
         from app.services.blooio import BlooioError
 
