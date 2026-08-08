@@ -46,10 +46,32 @@ _EMOJI_TO_REACTION = {
 class BlooioError(RuntimeError):
     """Raised when Blooio rejects a send/react request."""
 
-    def __init__(self, message: str, *, status_code: int | None = None, body: str | None = None):
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int | None = None,
+        body: str | None = None,
+        user_message: str | None = None,
+    ):
         super().__init__(message)
         self.status_code = status_code
         self.body = body
+        self.user_message = user_message
+
+
+def _paused_conversation_user_message(body: str | None) -> str | None:
+    """Blooio blocks outbound when the thread is idle 14+ days after re-engagement."""
+    if not body:
+        return None
+    lower = body.lower()
+    if "paused" in lower and ("re-engagement" in lower or "14 days" in lower):
+        from_number = (settings.BLOOIO_PHONE_NUMBER or "+14249441140").strip()
+        return (
+            "your iMessage thread with domino is paused — send us any message first "
+            f"({from_number}), then request a code again."
+        )
+    return None
 
 
 def _configured() -> bool:
@@ -72,6 +94,14 @@ def _raise_for_blooio(resp: httpx.Response, *, action: str) -> None:
     if resp.is_success:
         return
     body = (resp.text or "")[:500]
+    paused = _paused_conversation_user_message(body)
+    if paused:
+        raise BlooioError(
+            f"Blooio {action} failed — conversation paused",
+            status_code=resp.status_code,
+            body=body,
+            user_message=paused,
+        )
     # Blooio documents 503 as "no active number available"
     if resp.status_code == 503:
         raise BlooioError(

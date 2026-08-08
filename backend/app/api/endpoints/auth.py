@@ -184,8 +184,11 @@ async def _send_otp_message(phone: str, body: str) -> None:
         from app.services.blooio import BlooioError
 
         logger.exception("OTP send failed for phone ending %s: %s", phone[-4:], e)
-        if isinstance(e, BlooioError) and e.status_code == 503:
-            raise HTTPException(status_code=503, detail=OTP_SEND_UNAVAILABLE) from e
+        if isinstance(e, BlooioError):
+            if e.user_message:
+                raise HTTPException(status_code=409, detail=e.user_message) from e
+            if e.status_code == 503:
+                raise HTTPException(status_code=503, detail=OTP_SEND_UNAVAILABLE) from e
         raise HTTPException(status_code=502, detail=OTP_SEND_FAILED) from e
 
 
