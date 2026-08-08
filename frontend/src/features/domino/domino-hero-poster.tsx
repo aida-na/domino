@@ -10,7 +10,7 @@ const LANDING = {
   muted: '#6B625A',
   footer: '#8C8177',
   border: '#EDE6DD',
-  loginBorder: '#E3DCD3',
+  loginBg: 'rgba(232,98,44,0.07)',
   tileInactive: '#EDE7DD',
 } as const;
 
@@ -119,12 +119,13 @@ export function DominoHeroPoster() {
           href="/login"
           className="touch-manipulation rounded-full no-underline transition-colors hover:opacity-80 active:opacity-70"
           style={{
-            border: `1px solid ${LANDING.loginBorder}`,
+            border: `1px solid ${LANDING.accent}`,
             borderRadius: 100,
             padding: '9px 20px',
             fontSize: 15,
-            background: '#fff',
-            color: LANDING.ink,
+            fontWeight: 600,
+            background: LANDING.loginBg,
+            color: LANDING.accent,
           }}
         >
           login
@@ -160,7 +161,6 @@ export function DominoHeroPoster() {
         >
           domino helps you never lose what you find.
         </p>
-        <GetStartedButton className="mt-0.5 md:mt-1.5" fullWidth />
         <div className="hidden w-full md:block md:max-w-none">
           <DominoLandingMockups />
         </div>
