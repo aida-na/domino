@@ -62,6 +62,71 @@ struct DominoAccentPillButton: View {
     }
 }
 
+// MARK: - Domino dots
+
+/// A row of small dots — the recurring domino motif used for progress and section marks.
+struct DotRow: View {
+    let tones: [Color]
+    var size: CGFloat = 8
+
+    var body: some View {
+        HStack(spacing: size < 9 ? 3 : 6) {
+            ForEach(Array(tones.enumerated()), id: \.offset) { _, tone in
+                Circle().fill(tone).frame(width: size, height: size)
+            }
+        }
+    }
+}
+
+struct DominoProgressDots: View {
+    let filled: Int
+    let total: Int
+    var size: CGFloat = 8
+
+    var body: some View {
+        DotRow(
+            tones: (0..<total).map { $0 < filled ? DominoColors.accent : DominoColors.hairline },
+            size: size
+        )
+    }
+}
+
+// MARK: - Settings list
+
+struct DominoSettingsRow: View {
+    let systemImage: String
+    let title: String
+    var detail: String = ""
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(DominoColors.ink)
+                    .frame(width: 20)
+                Text(title)
+                    .font(.dominoBody(16))
+                    .foregroundStyle(DominoColors.ink)
+                Spacer()
+                if !detail.isEmpty {
+                    Text(detail)
+                        .font(.dominoBody(14))
+                        .foregroundStyle(DominoColors.ink3)
+                }
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(DominoColors.ink4)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 16)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 // MARK: - Search field
 
 struct DominoSearchField: View {

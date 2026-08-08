@@ -16,6 +16,8 @@ private let profileTimezones = [
     "UTC",
 ]
 
+private let profileTasteThreshold = 5
+
 struct ProfileView: View {
     @Environment(AuthSession.self) private var auth
     @Environment(AppNavigation.self) private var nav
@@ -34,27 +36,35 @@ struct ProfileView: View {
     private var thisWeekCount: Int {
         items.map(BookmarkMapper.toBookmark).filter { $0.days <= 7 }.count
     }
+    private var savesToTaste: Int { max(0, profileTasteThreshold - items.count) }
 
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 0) {
                     DominoPageTitle(title: "profile")
+                        .padding(.bottom, 26)
 
                     profileHeader
-                    actionButtons
-                    statsGrid
-                    signOutButton
-                    deleteAccountButton
-                    Text("domino · made with care")
-                        .font(.dominoBody(12))
-                        .foregroundStyle(DominoColors.ink4)
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 8)
+                        .padding(.bottom, 28)
+
+                    statsRow
+                        .padding(.bottom, savesToTaste > 0 ? 14 : 26)
+
+                    if savesToTaste > 0 {
+                        tasteNudge
+                            .padding(.bottom, 26)
+                    }
+
+                    settingsList
+                        .padding(.bottom, 26)
+
+                    footer
                 }
-                .padding(16)
+                .padding(.horizontal, 22)
+                .padding(.top, 8)
                 .padding(.bottom, 40)
             }
             .background(DominoColors.bg)
@@ -91,157 +101,174 @@ struct ProfileView: View {
     }
 
     private var profileHeader: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 14) {
             Text(String(auth.phone?.suffix(1) ?? "?"))
-                .font(.title2.weight(.bold))
+                .font(.dominoDisplay(26, weight: .bold))
+                .foregroundStyle(DominoColors.accentDeep)
                 .frame(width: 56, height: 56)
                 .background(DominoColors.card("o"))
                 .clipShape(Circle())
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(auth.phone ?? "")
-                    .font(.headline)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(auth.profile?.displayName?.isEmpty == false
+                     ? (auth.profile?.displayName ?? "")
+                     : (auth.phone ?? "you"))
+                    .font(.dominoBody(17, weight: .semibold))
+                    .foregroundStyle(DominoColors.ink)
                 Text(auth.profile?.email?.isEmpty == false ? (auth.profile?.email ?? "") : "add email for digest")
-                    .font(.subheadline)
+                    .font(.dominoBody(14))
                     .foregroundStyle(DominoColors.ink3)
+                    .lineLimit(1)
                 if let joined = auth.profile?.friendsJoinedCount, joined > 0 {
                     Text("\(joined) joined via your invite")
-                        .font(.caption)
-                        .foregroundStyle(DominoColors.ink3)
+                        .font(.dominoBody(12))
+                        .foregroundStyle(DominoColors.ink4)
                 }
             }
-            Spacer()
-        }
-        .padding()
-        .background(DominoColors.paper)
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .onTapGesture { showEdit = true }
-    }
-
-    private var actionButtons: some View {
-        HStack(spacing: 10) {
-            Button { showEdit = true } label: {
-                Label("edit", systemImage: "pencil")
-            }
-            .buttonStyle(SecondaryPillButtonStyle())
-
-            Button { showFriends = true } label: {
-                Label("friends", systemImage: "person.2")
-            }
-            .buttonStyle(SecondaryPillButtonStyle())
-
-            Button { showInvite = true } label: {
-                Label("invite", systemImage: "person.badge.plus")
-            }
-            .buttonStyle(SecondaryPillButtonStyle())
-
-            Button { showExport = true } label: {
-                Label("export", systemImage: "square.and.arrow.up")
-            }
-            .buttonStyle(SecondaryPillButtonStyle())
+            Spacer(minLength: 0)
         }
     }
 
-    private var statsGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-            Button {
+    private var statsRow: some View {
+        HStack(spacing: 0) {
+            statCell("saved", value: items.count) {
                 dismiss()
                 nav.selectedTab = 0
-            } label: {
-                statCard("saved", value: items.count)
             }
-            .buttonStyle(.plain)
-
-            Button {
+            statDivider
+            statCell("on the map", value: topicCount) {
+                dismiss()
+                nav.selectedTab = 1
+            }
+            statDivider
+            statCell("starred", value: starredCount) {
                 dismiss()
                 nav.pendingDashboardSort = .starred
                 nav.selectedTab = 0
+            }
+            statDivider
+            statCell("this week", value: thisWeekCount, action: nil)
+        }
+        .padding(.vertical, 24)
+        .background(DominoColors.paper)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+    }
+
+    private var statDivider: some View {
+        Rectangle()
+            .fill(DominoColors.hairline)
+            .frame(width: 1, height: 36)
+    }
+
+    @ViewBuilder
+    private func statCell(_ label: String, value: Int, action: (() -> Void)?) -> some View {
+        let content = VStack(spacing: 5) {
+            Text("\(value)")
+                .font(.dominoBody(26, weight: .bold))
+                .foregroundStyle(value == 0 ? DominoColors.ink4 : DominoColors.ink)
+            Text(label)
+                .font(.dominoBody(12))
+                .foregroundStyle(DominoColors.ink3)
+        }
+        .frame(maxWidth: .infinity)
+
+        if let action {
+            Button(action: action) { content.contentShape(Rectangle()) }
+                .buttonStyle(.plain)
+        } else {
+            content
+        }
+    }
+
+    private var tasteNudge: some View {
+        HStack(spacing: 12) {
+            DominoProgressDots(filled: items.count, total: profileTasteThreshold)
+            Text("\(savesToTaste) more \(savesToTaste == 1 ? "save" : "saves") and domino can start matching your taste.")
+                .font(.dominoBody(13))
+                .foregroundStyle(DominoColors.accentDeep)
+                .lineSpacing(2)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 14)
+        .background(DominoColors.card("o"))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private var settingsList: some View {
+        VStack(spacing: 0) {
+            DominoSettingsRow(systemImage: "pencil", title: "edit profile") { showEdit = true }
+            settingsDivider
+            DominoSettingsRow(systemImage: "bookmark", title: "my folders", detail: "\(topicCount)") {
+                dismiss()
+                nav.selectedTab = 1
+            }
+            settingsDivider
+            DominoSettingsRow(systemImage: "star", title: "starred", detail: "\(starredCount)") {
+                dismiss()
+                nav.pendingDashboardSort = .starred
+                nav.selectedTab = 0
+            }
+            settingsDivider
+            DominoSettingsRow(systemImage: "person.2", title: "friends") { showFriends = true }
+            settingsDivider
+            DominoSettingsRow(systemImage: "person.badge.plus", title: "invite a friend") { showInvite = true }
+            settingsDivider
+            DominoSettingsRow(systemImage: "square.and.arrow.up", title: "export everything") { showExport = true }
+        }
+        .background(DominoColors.paper)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+    }
+
+    private var settingsDivider: some View {
+        Rectangle()
+            .fill(DominoColors.hairline.opacity(0.6))
+            .frame(height: 1)
+            .padding(.leading, 18)
+    }
+
+    private var footer: some View {
+        VStack(spacing: 18) {
+            Button {
+                Task {
+                    isSigningOut = true
+                    await auth.logout()
+                    isSigningOut = false
+                }
             } label: {
-                statCard("starred", value: starredCount)
+                Group {
+                    if isSigningOut {
+                        ProgressView()
+                    } else {
+                        Text("sign out")
+                            .font(.dominoBody(16, weight: .semibold))
+                            .foregroundStyle(DominoColors.ink2)
+                    }
+                }
             }
             .buttonStyle(.plain)
 
             Button {
-                dismiss()
-                nav.selectedTab = 1
+                showDeleteAccount = true
             } label: {
-                statCard("map", value: topicCount)
+                Text("delete account")
+                    .font(.dominoBody(14))
+                    .foregroundStyle(DominoColors.ink4)
             }
             .buttonStyle(.plain)
 
-            statCard("this week", value: thisWeekCount)
-        }
-    }
-
-    private func statCard(_ label: String, value: Int) -> some View {
-        VStack(spacing: 4) {
-            Text("\(value)")
-                .font(.title2.weight(.bold))
-                .foregroundStyle(DominoColors.ink)
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(DominoColors.ink3)
+            Text("domino · made with care")
+                .font(.dominoDisplay(15, weight: .regular))
+                .foregroundStyle(DominoColors.ink4)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
-        .background(DominoColors.paper)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-    }
-
-    private var signOutButton: some View {
-        Button(role: .destructive) {
-            Task {
-                isSigningOut = true
-                await auth.logout()
-                isSigningOut = false
-            }
-        } label: {
-            Group {
-                if isSigningOut {
-                    ProgressView()
-                } else {
-                    Text("sign out").fontWeight(.semibold)
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-        }
-        .buttonStyle(.plain)
-        .background(DominoColors.paper)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(DominoColors.hairline))
-    }
-
-    private var deleteAccountButton: some View {
-        Button {
-            showDeleteAccount = true
-        } label: {
-            Text("delete account")
-                .fontWeight(.medium)
-                .foregroundStyle(Color.red.opacity(0.85))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-        }
-        .buttonStyle(.plain)
     }
 
     private func load() async {
         guard let token = auth.sessionToken else { return }
         items = (try? await api.getItems(token: token, limit: 500)) ?? []
-    }
-}
-
-private struct SecondaryPillButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.subheadline.weight(.semibold))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(DominoColors.paper)
-            .foregroundStyle(DominoColors.ink)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(DominoColors.hairline))
-            .opacity(configuration.isPressed ? 0.7 : 1)
     }
 }
 
@@ -634,94 +661,105 @@ struct FriendsSheet: View {
 
     private let api = DominoAPI()
 
+    @State private var didCopy = false
+
     private var inviteShareText: String {
         let url = auth.profile?.inviteURL ?? "https://domino.fyi/login"
         return "i use domino to save links over iMessage. join with my link and we'll connect automatically:\n\(url)"
     }
 
+    private var inviteLabel: String {
+        let url = auth.profile?.inviteURL ?? "https://domino.fyi/login"
+        return url
+            .replacingOccurrences(of: "https://", with: "")
+            .replacingOccurrences(of: "http://", with: "")
+    }
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    Text("Share your invite link — you'll auto-connect when they join.")
-                        .font(.dominoBody(13))
-                        .foregroundStyle(DominoColors.ink3)
-                    ShareLink(item: inviteShareText) {
-                        Text("share invite link")
-                            .font(.dominoBody(15, weight: .semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                    }
-                }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    DominoPageTitle(title: "friends", size: 34)
+                        .padding(.bottom, 26)
 
-                if let pending, !pending.incoming.isEmpty {
-                    Section("incoming requests") {
+                    inviteBlock
+                        .padding(.bottom, 28)
+
+                    if let pending, !pending.incoming.isEmpty {
+                        sectionLabel("\(pending.incoming.count) waiting for you")
                         ForEach(pending.incoming) { req in
-                            HStack {
-                                Text(req.user.displayName)
-                                Spacer()
-                                Button("accept") { Task { await accept(req.requestId) } }
-                                Button("decline") { Task { await decline(req.requestId) } }
+                            personRow(
+                                icon: "person.2",
+                                name: req.user.displayName,
+                                detail: "wants to connect"
+                            ) {
+                                HStack(spacing: 6) {
+                                    pillButton("accept", filled: true) { Task { await accept(req.requestId) } }
+                                    pillButton("decline") { Task { await decline(req.requestId) } }
+                                }
                             }
                         }
+                        Spacer().frame(height: 14)
                     }
-                }
 
-                Section("friends (\(friends.count))") {
-                    if friends.isEmpty {
-                        Text("No friends yet — share your invite link above.")
-                            .foregroundStyle(DominoColors.ink3)
-                    } else {
+                    if !friends.isEmpty {
+                        sectionLabel("your friends · \(friends.count)")
                         ForEach(friends) { friend in
-                            HStack {
-                                Text(friend.displayName)
-                                Spacer()
-                                Button("remove", role: .destructive) {
+                            personRow(
+                                icon: "person.crop.circle",
+                                name: friend.displayName,
+                                detail: nil
+                            ) {
+                                pillButton("remove", tint: Color.red.opacity(0.85)) {
                                     Task { await remove(friend.friendshipId) }
                                 }
                             }
                         }
+                        Spacer().frame(height: 14)
                     }
-                }
 
-                if let pending, !pending.outgoing.isEmpty {
-                    Section("pending") {
+                    if let pending, !pending.outgoing.isEmpty {
+                        sectionLabel("waiting on \(pending.outgoing.count)")
                         ForEach(pending.outgoing) { req in
-                            HStack {
-                                Text(req.user.displayName)
-                                    .foregroundStyle(DominoColors.ink3)
-                                Spacer()
-                                Button("cancel") { Task { await decline(req.requestId) } }
+                            personRow(
+                                icon: "clock",
+                                name: req.user.displayName,
+                                detail: FriendsSheet.invitedAgo(req.createdAt)
+                            ) {
+                                pillButton("cancel") { Task { await decline(req.requestId) } }
                             }
                         }
+                        Spacer().frame(height: 14)
                     }
-                }
 
-                Section {
-                    Button(showManualAdd ? "hide manual add" : "already on domino? add by code or phone") {
-                        showManualAdd.toggle()
-                    }
-                    .font(.dominoBody(13, weight: .semibold))
-                    .foregroundStyle(DominoColors.ink3)
-                    if showManualAdd {
-                        HStack {
-                            TextField("invite code", text: $inviteCode)
-                                .textInputAutocapitalization(.never)
-                            Button("add") { Task { await sendRequest(useInvite: true) } }
+                    if friends.isEmpty && !isLoading {
+                        VStack(spacing: 12) {
+                            DominoProgressDots(filled: 0, total: 3, size: 9)
+                            Text("no friends yet. the first one changes what discover can show you.")
+                                .font(.dominoBody(16))
+                                .foregroundStyle(DominoColors.ink3)
+                                .multilineTextAlignment(.center)
+                                .lineSpacing(3)
                         }
-                        HStack {
-                            TextField("phone", text: $phone)
-                                .keyboardType(.phonePad)
-                            Button("add") { Task { await sendRequest(useInvite: false) } }
-                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 28)
                     }
-                }
 
-                if let errorMessage {
-                    Section { Text(errorMessage).foregroundStyle(.red) }
+                    manualAddSection
+
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.dominoBody(14))
+                            .foregroundStyle(.red)
+                            .padding(.top, 14)
+                    }
                 }
+                .padding(.horizontal, 22)
+                .padding(.top, 8)
+                .padding(.bottom, 40)
             }
-            .navigationTitle("friends")
+            .background(DominoColors.bg)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -730,6 +768,203 @@ struct FriendsSheet: View {
             }
             .task { await reload() }
             .refreshable { await reload() }
+        }
+    }
+
+    // MARK: - Invite block
+
+    private var inviteBlock: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("share your link, connect automatically.")
+                .font(.dominoDisplay(24, weight: .bold))
+                .foregroundStyle(DominoColors.accentDeep)
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Button {
+                UIPasteboard.general.string = auth.profile?.inviteURL ?? "https://domino.fyi/login"
+                didCopy = true
+                Task {
+                    try? await Task.sleep(for: .seconds(1.8))
+                    didCopy = false
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    Text(didCopy ? "copied to clipboard" : inviteLabel)
+                        .font(.dominoBody(14, weight: .semibold))
+                        .foregroundStyle(DominoColors.ink)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer(minLength: 0)
+                    Image(systemName: "doc.on.doc")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(DominoColors.ink3)
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 14)
+                .background(DominoColors.paper)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(.plain)
+
+            ShareLink(item: inviteShareText) {
+                Text("share invite link")
+                    .font(.dominoBody(16, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 15)
+                    .background(DominoColors.accent)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(DominoColors.card("o"))
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    // MARK: - Manual add
+
+    private var manualAddSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button {
+                withAnimation(.easeOut(duration: 0.18)) { showManualAdd.toggle() }
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "person.badge.plus")
+                        .font(.system(size: 16))
+                        .foregroundStyle(DominoColors.ink)
+                    Text("add by code or phone")
+                        .font(.dominoBody(16))
+                        .foregroundStyle(DominoColors.ink)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(DominoColors.ink4)
+                        .rotationEffect(.degrees(showManualAdd ? 90 : 0))
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 16)
+                .frame(maxWidth: .infinity)
+                .background(DominoColors.paper)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(DominoColors.hairline, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+
+            if showManualAdd {
+                VStack(spacing: 10) {
+                    HStack(spacing: 8) {
+                        TextField("invite code", text: $inviteCode)
+                            .font(.dominoBody(15))
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .background(DominoColors.paper)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(DominoColors.hairline))
+                        pillButton("add", filled: true) { Task { await sendRequest(useInvite: true) } }
+                    }
+                    HStack(spacing: 8) {
+                        TextField("phone", text: $phone)
+                            .font(.dominoBody(15))
+                            .keyboardType(.phonePad)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .background(DominoColors.paper)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(DominoColors.hairline))
+                        pillButton("add", filled: true) { Task { await sendRequest(useInvite: false) } }
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Row building blocks
+
+    private func sectionLabel(_ text: String) -> some View {
+        Text(text.uppercased())
+            .font(.dominoBody(12, weight: .semibold))
+            .tracking(0.9)
+            .foregroundStyle(DominoColors.ink4)
+            .padding(.bottom, 12)
+    }
+
+    private func personRow<Action: View>(
+        icon: String,
+        name: String,
+        detail: String?,
+        @ViewBuilder action: () -> Action
+    ) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundStyle(DominoColors.ink4)
+                .frame(width: 40, height: 40)
+                .background(DominoColors.chipIdle)
+                .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name)
+                    .font(.dominoBody(16, weight: .semibold))
+                    .foregroundStyle(DominoColors.ink)
+                    .lineLimit(1)
+                if let detail {
+                    Text(detail)
+                        .font(.dominoBody(13))
+                        .foregroundStyle(DominoColors.ink3)
+                }
+            }
+
+            Spacer(minLength: 0)
+            action()
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 14)
+        .background(DominoColors.paper)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: .black.opacity(0.03), radius: 6, y: 1)
+        .padding(.bottom, 8)
+    }
+
+    private func pillButton(
+        _ title: String,
+        filled: Bool = false,
+        tint: Color = DominoColors.ink3,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.dominoBody(14, weight: filled ? .semibold : .regular))
+                .foregroundStyle(filled ? DominoColors.bg : tint)
+                .padding(.horizontal, 15)
+                .padding(.vertical, 8)
+                .background(filled ? DominoColors.ink : Color.clear)
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule().stroke(filled ? Color.clear : DominoColors.hairline, lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private static func invitedAgo(_ iso: String?) -> String {
+        guard let iso else { return "invited" }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let date = formatter.date(from: iso) ?? ISO8601DateFormatter().date(from: iso)
+        guard let date else { return "invited" }
+        let days = max(0, Calendar.current.dateComponents([.day], from: date, to: Date()).day ?? 0)
+        switch days {
+        case 0: return "invited today"
+        case 1: return "invited yesterday"
+        default: return "invited \(days) days ago"
         }
     }
 

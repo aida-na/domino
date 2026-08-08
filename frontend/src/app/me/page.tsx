@@ -9,8 +9,94 @@ import { useDominoTheme } from '@/features/domino/domino-theme';
 import { dominoApi, type DominoFriend, type DominoFriendsPendingResponse, type DominoMeResponse } from '@/features/domino/domino-api';
 import { inviteUrlFor, shareInvite } from '@/features/domino/domino-invite';
 import { toBookmark, cardColor, type Bookmark } from '@/features/domino/domino-utils';
-import { IcBookmark, IcStar, IcShare, IcCompass, IcChevron, IcX } from '@/features/domino/domino-icons';
+import {
+  IcBookmark, IcStar, IcShare, IcChevron, IcX,
+  IcPencil, IcUsers, IcUserPlus, IcClock, IcCopy, IcSun,
+} from '@/features/domino/domino-icons';
 import posthog from 'posthog-js';
+
+const TASTE_THRESHOLD = 5;
+
+function daysSince(iso: string | null): number | null {
+  if (!iso) return null;
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return null;
+  return Math.max(0, Math.floor((Date.now() - then) / 86_400_000));
+}
+
+function invitedAgo(iso: string | null): string {
+  const days = daysSince(iso);
+  if (days === null) return 'invited';
+  if (days === 0) return 'invited today';
+  if (days === 1) return 'invited yesterday';
+  return `invited ${days} days ago`;
+}
+
+function Dots({ filled, total, size = 8 }: { filled: number; total: number; size?: number }) {
+  return (
+    <span style={{ display: 'inline-flex', gap: 3, flexShrink: 0 }}>
+      {Array.from({ length: total }, (_, i) => (
+        <span
+          key={i}
+          style={{
+            width: size, height: size, borderRadius: 9999,
+            background: i < filled ? 'var(--domino-accent)' : 'var(--hairline)',
+          }}
+        />
+      ))}
+    </span>
+  );
+}
+
+function SectionLabel({ children }: { children: ReactNode }) {
+  return (
+    <div style={{
+      fontSize: 'var(--dn-text-xs)', letterSpacing: '0.08em', textTransform: 'uppercase',
+      color: 'var(--ink-4)', fontWeight: 600, marginBottom: 12,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function PersonRow({
+  avatar,
+  name,
+  detail,
+  action,
+}: {
+  avatar: ReactNode;
+  name: string;
+  detail?: string;
+  action: ReactNode;
+}) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 14,
+      padding: '14px 18px', marginBottom: 8,
+      background: 'var(--paper)', borderRadius: 20,
+      border: '1px solid var(--dn-card-border)', boxShadow: 'var(--dn-card-shadow)',
+    }}>
+      <span style={{
+        width: 40, height: 40, borderRadius: 9999, flexShrink: 0,
+        background: 'var(--bg-deep)', color: 'var(--ink-4)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {avatar}
+      </span>
+      <span style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
+        <span style={{
+          fontSize: 'var(--dn-text-base)', fontWeight: 600, color: 'var(--ink)',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {name}
+        </span>
+        {detail && <span style={{ fontSize: 'var(--dn-text-sm)', color: 'var(--ink-3)' }}>{detail}</span>}
+      </span>
+      {action}
+    </div>
+  );
+}
 
 const TIMEZONES = [
   'America/Los_Angeles',
@@ -90,7 +176,22 @@ function FriendsSheet({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [showManualAdd, setShowManualAdd] = useState(false);
+
+  const inviteUrl = inviteUrlFor(profile);
+  const inviteLabel = inviteUrl?.replace(/^https?:\/\//, '') ?? null;
+
+  async function copyInvite() {
+    if (!inviteUrl) return;
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setError('couldn’t copy link');
+    }
+  }
 
   async function reload() {
     setLoading(true);
@@ -179,21 +280,40 @@ function FriendsSheet({
       {loading ? (
         <div style={{ color: 'var(--ink-3)', fontSize: 'var(--dn-text-base)' }}>loading…</div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{
-            padding: 14, borderRadius: 14,
-            background: 'var(--card-o)', border: '1px solid var(--hairline-soft)',
+            background: 'var(--card-o)', borderRadius: 24, padding: 22,
+            display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 28,
           }}>
-            <p style={{ fontSize: 'var(--dn-text-sm)', color: 'var(--ink-2)', margin: '0 0 12px', lineHeight: 1.5 }}>
-              Share your invite link — you&apos;ll auto-connect when they join.
-            </p>
+            <div className="dn-wordmark" style={{ fontSize: 24, lineHeight: 1.2, color: 'var(--domino-accent-deep)' }}>
+              share your link, connect automatically.
+            </div>
+            {inviteLabel && (
+              <button
+                type="button"
+                onClick={() => { void copyInvite(); }}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+                  background: 'var(--paper)', borderRadius: 14, padding: '14px 18px',
+                  border: 0, cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left',
+                }}
+              >
+                <span style={{
+                  fontSize: 'var(--dn-text-sm)', fontWeight: 600, color: 'var(--ink)',
+                  letterSpacing: '0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {copied ? 'copied to clipboard' : inviteLabel}
+                </span>
+                <span style={{ color: 'var(--ink-3)', flexShrink: 0, display: 'flex' }}><IcCopy size={17} /></span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => { void onShareInvite(); }}
               disabled={sharing}
               style={{
-                width: '100%', height: 44, borderRadius: 12, border: 0,
-                background: 'var(--ink)', color: 'var(--bg)',
+                width: '100%', padding: '15px 0', borderRadius: 9999, border: 0,
+                background: 'var(--domino-accent)', color: 'white',
                 fontSize: 'var(--dn-text-base)', fontWeight: 600,
                 cursor: sharing ? 'wait' : 'pointer', fontFamily: 'inherit',
               }}
@@ -203,41 +323,115 @@ function FriendsSheet({
           </div>
 
           {pending && pending.incoming.length > 0 && (
-            <div>
-              <div style={labelStyle()}>incoming requests</div>
+            <div style={{ marginBottom: 22 }}>
+              <SectionLabel>{pending.incoming.length} waiting for you</SectionLabel>
               {pending.incoming.map((req) => (
-                <div key={req.request_id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <span style={{ flex: 1, fontSize: 'var(--dn-text-base)' }}>{req.user.display_name}</span>
-                  <button type="button" className="dn-chip" style={{ height: 34 }} onClick={() => { void dominoApi.acceptFriendRequest(token, req.request_id).then(reload); }}>accept</button>
-                  <button type="button" className="dn-chip" style={{ height: 34 }} onClick={() => { void dominoApi.declineFriendRequest(token, req.request_id).then(reload); }}>decline</button>
-                </div>
+                <PersonRow
+                  key={req.request_id}
+                  avatar={<IcUsers size={17} />}
+                  name={req.user.display_name}
+                  detail="wants to connect"
+                  action={
+                    <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        style={{
+                          height: 32, padding: '0 15px', borderRadius: 9999, border: 0,
+                          background: 'var(--ink)', color: 'var(--bg)',
+                          fontSize: 'var(--dn-text-sm)', fontWeight: 600,
+                          cursor: 'pointer', fontFamily: 'inherit',
+                        }}
+                        onClick={() => { void dominoApi.acceptFriendRequest(token, req.request_id).then(reload); }}
+                      >
+                        accept
+                      </button>
+                      <button
+                        type="button"
+                        style={{
+                          height: 32, padding: '0 15px', borderRadius: 9999,
+                          border: '1px solid var(--hairline)', background: 'transparent',
+                          color: 'var(--ink-3)', fontSize: 'var(--dn-text-sm)',
+                          cursor: 'pointer', fontFamily: 'inherit',
+                        }}
+                        onClick={() => { void dominoApi.declineFriendRequest(token, req.request_id).then(reload); }}
+                      >
+                        decline
+                      </button>
+                    </span>
+                  }
+                />
               ))}
             </div>
           )}
 
-          <div>
-            <div style={labelStyle()}>your friends ({friends.length})</div>
-            {friends.length === 0 ? (
-              <p style={{ fontSize: 'var(--dn-text-sm)', color: 'var(--ink-3)', margin: 0 }}>No friends yet — share your invite link above.</p>
-            ) : (
-              friends.map((f) => (
-                <div key={f.friendship_id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <span style={{ flex: 1, fontSize: 'var(--dn-text-base)' }}>{f.display_name}</span>
-                  <button type="button" className="dn-chip" style={{ height: 34, color: 'oklch(0.55 0.18 27)' }} onClick={() => { void dominoApi.removeFriend(token, f.friendship_id).then(reload); }}>remove</button>
-                </div>
-              ))
-            )}
-          </div>
+          {friends.length > 0 && (
+            <div style={{ marginBottom: 22 }}>
+              <SectionLabel>your friends · {friends.length}</SectionLabel>
+              {friends.map((f) => (
+                <PersonRow
+                  key={f.friendship_id}
+                  avatar={
+                    <span style={{ fontFamily: 'var(--font-serif)', fontSize: 17, color: 'var(--ink-2)' }}>
+                      {f.display_name.trim().slice(-1) || '?'}
+                    </span>
+                  }
+                  name={f.display_name}
+                  action={
+                    <button
+                      type="button"
+                      style={{
+                        height: 32, padding: '0 15px', borderRadius: 9999, flexShrink: 0,
+                        border: '1px solid var(--hairline)', background: 'transparent',
+                        color: 'oklch(0.55 0.18 27)', fontSize: 'var(--dn-text-sm)',
+                        cursor: 'pointer', fontFamily: 'inherit',
+                      }}
+                      onClick={() => { void dominoApi.removeFriend(token, f.friendship_id).then(reload); }}
+                    >
+                      remove
+                    </button>
+                  }
+                />
+              ))}
+            </div>
+          )}
 
           {pending && pending.outgoing.length > 0 && (
-            <div>
-              <div style={labelStyle()}>pending</div>
+            <div style={{ marginBottom: 22 }}>
+              <SectionLabel>waiting on {pending.outgoing.length}</SectionLabel>
               {pending.outgoing.map((req) => (
-                <div key={req.request_id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <span style={{ flex: 1, fontSize: 'var(--dn-text-base)', color: 'var(--ink-3)' }}>{req.user.display_name}</span>
-                  <button type="button" className="dn-chip" style={{ height: 34 }} onClick={() => { void dominoApi.declineFriendRequest(token, req.request_id).then(reload); }}>cancel</button>
-                </div>
+                <PersonRow
+                  key={req.request_id}
+                  avatar={<IcClock size={17} />}
+                  name={req.user.display_name}
+                  detail={invitedAgo(req.created_at)}
+                  action={
+                    <button
+                      type="button"
+                      style={{
+                        height: 32, padding: '0 15px', borderRadius: 9999, flexShrink: 0,
+                        border: '1px solid var(--hairline)', background: 'transparent',
+                        color: 'var(--ink-3)', fontSize: 'var(--dn-text-sm)',
+                        cursor: 'pointer', fontFamily: 'inherit',
+                      }}
+                      onClick={() => { void dominoApi.declineFriendRequest(token, req.request_id).then(reload); }}
+                    >
+                      cancel
+                    </button>
+                  }
+                />
               ))}
+            </div>
+          )}
+
+          {friends.length === 0 && (
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+              textAlign: 'center', padding: '4px 20px 28px',
+            }}>
+              <Dots filled={0} total={3} size={9} />
+              <span style={{ fontSize: 'var(--dn-text-base)', color: 'var(--ink-3)', lineHeight: 1.5 }}>
+                no friends yet. the first one changes what discover can show you.
+              </span>
             </div>
           )}
 
@@ -246,12 +440,22 @@ function FriendsSheet({
               type="button"
               onClick={() => setShowManualAdd((v) => !v)}
               style={{
-                background: 'none', border: 0, padding: 0, cursor: 'pointer',
-                fontSize: 'var(--dn-text-sm)', fontWeight: 600, color: 'var(--ink-3)',
-                fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+                padding: '16px 18px', borderRadius: 20,
+                background: 'var(--paper)', border: '1px solid var(--hairline-soft)',
+                cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
               }}
             >
-              {showManualAdd ? 'hide manual add' : 'already on domino? add by code or phone'}
+              <span style={{ color: 'var(--ink)', display: 'flex', flexShrink: 0 }}><IcUserPlus size={18} /></span>
+              <span style={{ flex: 1, fontSize: 'var(--dn-text-base)', color: 'var(--ink)' }}>
+                add by code or phone
+              </span>
+              <span style={{
+                color: 'var(--ink-4)', flexShrink: 0, display: 'flex',
+                transform: showManualAdd ? 'rotate(90deg)' : 'none', transition: 'transform 160ms ease',
+              }}>
+                <IcChevron size={14} />
+              </span>
             </button>
             {showManualAdd && (
               <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -273,7 +477,9 @@ function FriendsSheet({
             )}
           </div>
 
-          {error && <div style={{ fontSize: 'var(--dn-text-sm)', color: 'oklch(0.55 0.18 27)' }}>{error}</div>}
+          {error && (
+            <div style={{ marginTop: 14, fontSize: 'var(--dn-text-sm)', color: 'oklch(0.55 0.18 27)' }}>{error}</div>
+          )}
         </div>
       )}
     </SheetShell>
@@ -476,20 +682,6 @@ function MeContent() {
     return { total, starred, folders, thisWeek };
   }, [items]);
 
-  const weekBars = useMemo(() => {
-    const days = [0, 0, 0, 0, 0, 0, 0];
-    const today = new Date();
-    const todayDow = (today.getDay() + 6) % 7;
-    items.forEach((it) => {
-      if (it.days < 7) {
-        const idx = (todayDow - it.days + 7) % 7;
-        days[idx]++;
-      }
-    });
-    const max = Math.max(...days, 1);
-    return days.map((v) => v / max);
-  }, [items]);
-
   const digits = phone?.replace(/\D/g, '') ?? '';
   const initial = digits.slice(-1) || '?';
   const avatarColor = phone ? ['o', 'p', 'v', 'm', 'b'][phone.length % 5] : 'o';
@@ -562,58 +754,75 @@ function MeContent() {
     onClick: () => void;
   }[] = [
     {
-      icon: <IcBookmark size={16} />,
-      label: 'My folders',
-      detail: `${stats.folders} folders`,
+      icon: <IcPencil size={18} />,
+      label: 'edit profile',
+      detail: '',
+      onClick: () => profile && setSheet('edit'),
+    },
+    {
+      icon: <IcBookmark size={18} />,
+      label: 'my folders',
+      detail: `${stats.folders}`,
       onClick: () => router.push('/map'),
     },
     {
-      icon: <IcStar size={16} />,
-      label: 'Starred',
-      detail: `${stats.starred} items`,
+      icon: <IcStar size={18} />,
+      label: 'starred',
+      detail: `${stats.starred}`,
       onClick: () => router.push('/dashboard?sort=starred'),
     },
     {
-      icon: <IcCompass size={16} />,
-      label: 'Friends',
-      detail: profile?.discover_opt_in ? 'manage' : '',
+      icon: <IcUsers size={18} />,
+      label: 'friends',
+      detail: '',
       onClick: () => setSheet('friends'),
     },
     {
-      icon: <IcShare size={16} />,
-      label: 'Share & export',
+      icon: <IcShare size={18} />,
+      label: 'share & export',
       detail: '',
       onClick: () => setSheet('export'),
     },
     {
-      icon: <IcCompass size={16} />,
-      label: 'Appearance',
+      icon: <IcSun size={18} />,
+      label: 'appearance',
       detail: theme === 'dark' ? 'dark' : 'warm light',
       onClick: () => setSheet('appearance'),
     },
   ];
 
+  const savesToTaste = Math.max(0, TASTE_THRESHOLD - stats.total);
+  const statCells: { num: number; label: string; href?: string }[] = [
+    { num: stats.total, label: 'saved', href: '/dashboard' },
+    { num: stats.folders, label: 'on the map', href: '/map' },
+    { num: stats.starred, label: 'starred', href: '/dashboard?sort=starred' },
+    { num: stats.thisWeek, label: 'this week' },
+  ];
+
   return (
     <div style={{ height: '100%', overflow: 'auto', paddingBottom: 100 }}>
       <div style={{ padding: '14px 18px 0' }}>
-        <div className="dn-wordmark" style={{ fontSize: 24, marginBottom: 16 }}>me</div>
+        <div className="dn-wordmark" style={{ fontSize: 34, marginBottom: 26 }}>me</div>
       </div>
 
       <div style={{ padding: '0 18px' }}>
-        <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 14 }}>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 28 }}>
           <div style={{
-            width: 64, height: 64, borderRadius: 20,
+            width: 56, height: 56, borderRadius: 9999, flexShrink: 0,
             background: cardColor(avatarColor),
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: 28,
-            color: 'var(--ink)', letterSpacing: '-0.02em',
+            fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: 26,
+            color: 'var(--domino-accent-deep)', letterSpacing: '-0.02em',
           }}>{initial}</div>
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.02em' }}>
-              {phone || 'you'}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 'var(--dn-text-md)', fontWeight: 600, color: 'var(--ink)' }}>
+              {profile?.display_name || phone || 'you'}
             </div>
-            <div style={{ fontSize: 'var(--dn-text-sm)', color: 'var(--ink-3)', marginTop: 2 }}>
-              {profile?.email || 'domino user'}
+            <div style={{
+              fontSize: 'var(--dn-text-sm)', color: 'var(--ink-3)', marginTop: 3,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {profile?.email || phone || 'domino user'}
               {(profile?.friends_joined_count ?? 0) > 0 && (
                 <> · {profile!.friends_joined_count} joined via your invite</>
               )}
@@ -621,132 +830,109 @@ function MeContent() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-          <button
-            type="button"
-            className="dn-chip"
-            style={{ flex: 1, justifyContent: 'center', height: 38, fontSize: 'var(--dn-text-base)' }}
-            onClick={() => profile && setSheet('edit')}
-            disabled={!profile}
-          >
-            edit profile
-          </button>
-          <button
-            type="button"
-            className="dn-chip"
-            style={{
-              flex: 1, justifyContent: 'center', height: 38, fontSize: 'var(--dn-text-base)',
-              background: 'var(--ink)', color: 'var(--bg)', borderColor: 'var(--ink)',
-              opacity: sharing ? 0.7 : 1,
-            }}
-            onClick={onShareDomino}
-            disabled={sharing}
-          >
-            {sharing ? 'creating…' : 'share invite'}
-          </button>
+        <div style={{
+          background: 'var(--paper)', borderRadius: 22, padding: '24px 4px',
+          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
+          marginBottom: 14,
+          border: '1px solid var(--dn-card-border)', boxShadow: 'var(--dn-card-shadow)',
+        }}>
+          {statCells.map((s, i) => {
+            const cell = (
+              <>
+                <span style={{
+                  fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1,
+                  color: s.num === 0 ? 'var(--ink-4)' : 'var(--ink)',
+                }}>
+                  {s.num}
+                </span>
+                <span style={{ fontSize: 'var(--dn-text-xs)', color: 'var(--ink-3)' }}>{s.label}</span>
+              </>
+            );
+            const cellStyle: CSSProperties = {
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+              background: 'transparent', border: 0, fontFamily: 'inherit', padding: 0,
+              borderLeftWidth: i > 0 ? 1 : 0,
+              borderLeftStyle: 'solid',
+              borderLeftColor: 'var(--hairline-soft)',
+            };
+            return s.href ? (
+              <button key={s.label} type="button" onClick={() => router.push(s.href!)} style={{ ...cellStyle, cursor: 'pointer' }}>
+                {cell}
+              </button>
+            ) : (
+              <span key={s.label} style={cellStyle}>{cell}</span>
+            );
+          })}
         </div>
 
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: 8, marginBottom: 16,
-        }}>
-          {[
-            { num: stats.total, label: 'saved', href: '/dashboard' },
-            { num: stats.starred, label: 'starred', href: '/dashboard?sort=starred' },
-            { num: stats.folders, label: 'folders', href: '/map' },
-          ].map((s) => (
-            <button
-              key={s.label}
-              type="button"
-              onClick={() => router.push(s.href)}
-              style={{
-                background: 'var(--paper)',
-                border: '1px solid var(--hairline-soft)',
-                borderRadius: 14, padding: '14px 10px',
-                textAlign: 'center', cursor: 'pointer', fontFamily: 'inherit',
-              }}
-            >
-              <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--ink)', letterSpacing: '-0.03em', lineHeight: 1 }}>
-                {s.num}
-              </div>
-              <div style={{ fontSize: 'var(--dn-text-sm)', color: 'var(--ink-3)', marginTop: 4 }}>{s.label}</div>
-            </button>
-          ))}
-        </div>
-
-        <div style={{
-          background: 'var(--paper)',
-          border: '1px solid var(--hairline-soft)',
-          borderRadius: 14, padding: 14, marginBottom: 16,
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-            <div style={{ fontSize: 'var(--dn-text-md)', fontWeight: 600, color: 'var(--ink)' }}>This week</div>
-            <div style={{ fontSize: 'var(--dn-text-sm)', color: 'var(--ink-3)' }}>{stats.thisWeek} new saves</div>
+        {savesToTaste > 0 && (
+          <div style={{
+            background: 'var(--card-o)', borderRadius: 18, padding: '14px 18px',
+            display: 'flex', alignItems: 'center', gap: 12, marginBottom: 26,
+          }}>
+            <Dots filled={stats.total} total={TASTE_THRESHOLD} />
+            <span style={{ fontSize: 'var(--dn-text-sm)', lineHeight: 1.4, color: 'var(--domino-accent-deep)' }}>
+              {savesToTaste} more {savesToTaste === 1 ? 'save' : 'saves'} and domino can start matching your taste.
+            </span>
           </div>
-          <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end', height: 48 }}>
-            {weekBars.map((v, i) => (
-              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                <div style={{
-                  width: '100%',
-                  height: `${Math.max(v * 36, 4)}px`,
-                  background: i === ((new Date().getDay() + 6) % 7) ? 'var(--domino-accent)' : 'var(--card-y)',
-                  borderRadius: 4,
-                  transition: 'height 240ms ease',
-                }} />
-                <div style={{ fontSize: 'var(--dn-text-xs)', color: 'var(--ink-4)' }}>{['M', 'T', 'W', 'T', 'F', 'S', 'S'][i]}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+        )}
 
         <div style={{
-          background: 'var(--paper)',
-          border: '1px solid var(--hairline-soft)',
-          borderRadius: 14, overflow: 'hidden', marginBottom: 20,
+          background: 'var(--paper)', borderRadius: 22, overflow: 'hidden', marginBottom: 26,
+          border: '1px solid var(--dn-card-border)', boxShadow: 'var(--dn-card-shadow)',
         }}>
-          {rows.map((row, i, arr) => (
+          {rows.map((row, i) => (
             <button
               key={row.label}
               type="button"
               onClick={row.onClick}
               style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '13px 14px', width: '100%',
+                display: 'flex', alignItems: 'center', gap: 14,
+                padding: '16px 18px', width: '100%',
                 border: 0,
-                borderBottom: i < arr.length - 1 ? '1px solid var(--hairline-soft)' : 'none',
+                borderTop: i > 0 ? '1px solid var(--hairline-soft)' : 'none',
                 background: 'transparent',
                 cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
               }}
             >
-              <div style={{ color: 'var(--ink-3)', flexShrink: 0 }}>{row.icon}</div>
-              <div style={{ flex: 1, fontSize: 'var(--dn-text-base)', color: 'var(--ink)', fontWeight: 500 }}>{row.label}</div>
-              {row.detail && <div style={{ fontSize: 'var(--dn-text-sm)', color: 'var(--ink-3)' }}>{row.detail}</div>}
-              <div style={{ color: 'var(--ink-4)', flexShrink: 0 }}><IcChevron size={14} /></div>
+              <span style={{ color: 'var(--ink)', flexShrink: 0, display: 'flex' }}>{row.icon}</span>
+              <span style={{ flex: 1, fontSize: 'var(--dn-text-base)', color: 'var(--ink)' }}>{row.label}</span>
+              {row.detail && <span style={{ fontSize: 'var(--dn-text-sm)', color: 'var(--ink-3)' }}>{row.detail}</span>}
+              <span style={{ color: 'var(--ink-4)', flexShrink: 0, display: 'flex' }}><IcChevron size={12} /></span>
             </button>
           ))}
         </div>
 
-        <button
-          type="button"
-          onClick={logout}
-          style={{
-            width: '100%', padding: '13px 14px',
-            background: 'var(--paper)',
-            border: '1px solid var(--hairline-soft)',
-            borderRadius: 14, cursor: 'pointer',
-            fontSize: 'var(--dn-text-base)', color: 'oklch(0.55 0.18 27)',
-            fontWeight: 500, textAlign: 'left', fontFamily: 'inherit',
-          }}
-        >
-          sign out
-        </button>
-
         <div style={{
-          textAlign: 'center', marginTop: 22,
-          fontFamily: 'var(--font-serif)', fontStyle: 'italic',
-          fontSize: 'var(--dn-text-sm)', color: 'var(--ink-4)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18,
+          paddingBottom: 30,
         }}>
-          domino · made with care
+          <button
+            type="button"
+            onClick={logout}
+            style={{
+              background: 'none', border: 0, padding: 0, cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: 'var(--dn-text-base)', fontWeight: 600, color: 'var(--ink-2)',
+            }}
+          >
+            sign out
+          </button>
+          <button
+            type="button"
+            onClick={() => { void deleteAccount(); }}
+            style={{
+              background: 'none', border: 0, padding: 0, cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: 'var(--dn-text-sm)', color: 'var(--ink-4)',
+            }}
+          >
+            delete account
+          </button>
+          <span style={{
+            fontFamily: 'var(--font-serif)', fontStyle: 'italic',
+            fontSize: 'var(--dn-text-sm)', color: 'var(--ink-4)',
+          }}>
+            domino · made with care
+          </span>
         </div>
       </div>
 
@@ -811,23 +997,8 @@ function MeContent() {
             >
               download my data (json)
             </button>
-            <button
-              type="button"
-              style={{
-                height: 44, width: '100%', borderRadius: 12,
-                border: '1px solid oklch(0.88 0.08 27)',
-                background: 'transparent',
-                color: 'oklch(0.55 0.18 27)',
-                fontSize: 'var(--dn-text-base)', fontWeight: 500,
-                cursor: 'pointer', fontFamily: 'inherit',
-              }}
-              onClick={() => { void deleteAccount(); }}
-            >
-              delete account
-            </button>
             <p style={{ fontSize: 'var(--dn-text-sm)', color: 'var(--ink-4)', margin: '6px 0 0', lineHeight: 1.45 }}>
               your invite links friends to sign up with your referral code.
-              deleting your account removes all saves permanently.
             </p>
           </div>
         </SheetShell>

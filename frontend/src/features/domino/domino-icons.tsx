@@ -98,6 +98,24 @@ export const IcImage = ({ size = 14 }: IconProps) => (
 export const IcClipboard = ({ size = 14 }: IconProps) => (
   <Ic size={size}><rect x="6" y="4" width="12" height="16" rx="2" /><path d="M9 4v-1a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" /></Ic>
 );
+export const IcCopy = ({ size = 16 }: IconProps) => (
+  <Ic size={size}><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M15 5.5V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h.5" /></Ic>
+);
+export const IcPencil = ({ size = 16 }: IconProps) => (
+  <Ic size={size} d="M15.5 3.5 20 8 8.5 19.5H4V15z" />
+);
+export const IcUsers = ({ size = 16 }: IconProps) => (
+  <Ic size={size}><circle cx="9" cy="8" r="3.4" /><path d="M2.5 19.5c0-3.4 2.9-5.5 6.5-5.5s6.5 2.1 6.5 5.5" /><circle cx="18" cy="8.5" r="2.6" /></Ic>
+);
+export const IcUserPlus = ({ size = 16 }: IconProps) => (
+  <Ic size={size}><circle cx="9" cy="8" r="3.4" /><path d="M2.5 19.5c0-3.4 2.9-5.5 6.5-5.5s6.5 2.1 6.5 5.5" /><path d="M18 7v5M15.5 9.5h5" /></Ic>
+);
+export const IcClock = ({ size = 16 }: IconProps) => (
+  <Ic size={size}><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5.4l3.4 2" /></Ic>
+);
+export const IcSun = ({ size = 16 }: IconProps) => (
+  <Ic size={size}><circle cx="12" cy="12" r="4" /><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M18.7 5.3l-1.4 1.4M6.7 17.3l-1.4 1.4" /></Ic>
+);
 
 export function KindIcon({ kind, size = 14 }: { kind: string; size?: number }) {
   if (kind === 'note') return <IcNote size={size} />;

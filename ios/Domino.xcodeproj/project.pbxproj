@@ -68,6 +68,7 @@
 		F139B02F2160BDB3CC1E17A7 /* DominoComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = C69E9064E4B5907DE6137A3C /* DominoComponents.swift */; };
 		F3F6642DB821C483C2BC0547 /* AuthTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB9FCEC1559643AF482BF406 /* AuthTokens.swift */; };
 		F580C05476175D5D4691620C /* BookmarkMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9CD20FA3918931C000216F2 /* BookmarkMapper.swift */; };
+		F730FCA89A2D1B4C0B8F8918 /* ChatModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74C6BA02EE4A6CF7CD070AD8 /* ChatModelsTests.swift */; };
 		FF6BF7E2EA97D6A3F84B7658 /* AppNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = D839A4F925F568C0B9B048A0 /* AppNavigation.swift */; };
 /* End PBXBuildFile section */
 
@@ -129,6 +130,7 @@
 		6AD146DA0EF3C9A5D9D5A567 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		6B51DB97607AAF0EBC95AABB /* DominoTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DominoTypography.swift; sourceTree = "<group>"; };
 		72DB6D9A546F061A8426BFCA /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		74C6BA02EE4A6CF7CD070AD8 /* ChatModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModelsTests.swift; sourceTree = "<group>"; };
 		760DDD8A0A0EE3177CCED0AC /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		79E65BEF2A4B37F5FA84AE92 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		7BD8DA1E535CC30A34C78FB8 /* DominoShare.Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = DominoShare.Release.xcconfig; sourceTree = "<group>"; };
@@ -198,6 +200,7 @@
 			isa = PBXGroup;
 			children = (
 				0451DCC77C1CCC4F0AC5DBFF /* APIErrorTests.swift */,
+				74C6BA02EE4A6CF7CD070AD8 /* ChatModelsTests.swift */,
 				FD9A4848F037C89929891F6D /* PhoneNormalizerTests.swift */,
 			);
 			path = DominoTests;
@@ -645,6 +648,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				3F0AC81397464C3F106B1D6E /* APIErrorTests.swift in Sources */,
+				F730FCA89A2D1B4C0B8F8918 /* ChatModelsTests.swift in Sources */,
 				EB65D3099D3A0A582DC88360 /* PhoneNormalizerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
