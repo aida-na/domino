@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import posthog from 'posthog-js';
 import { DominoProtectedRoute } from '@/features/domino/domino-protected-route';
 import { DominoAppShell } from '@/features/domino/domino-app-shell';
 import { useDominoAuth } from '@/features/domino/domino-auth-context';

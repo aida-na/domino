@@ -25,7 +25,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "domino — your second brain",
+  title: "domino — save now, find later",
   description: "Save links, notes, and ideas via iMessage. Get a weekly digest of your own brilliance.",
 };
 
