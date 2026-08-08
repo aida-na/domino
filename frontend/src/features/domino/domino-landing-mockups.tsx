@@ -176,11 +176,8 @@ type PhonePairItem = {
 export function DominoLandingPhonePairs({ items }: { items: PhonePairItem[] }) {
   return (
     <div className="landing-phone-pairs">
-      {items.map(({ variant, copy }, index) => (
-        <div
-          key={variant}
-          className={`landing-phone-pair${index > 0 ? ' landing-phone-pair--bordered' : ''}`}
-        >
+      {items.map(({ variant, copy }) => (
+        <div key={variant} className="landing-phone-pair">
           <LandingPhone variant={variant} />
           <div className="landing-phone-pair-copy">{copy}</div>
         </div>

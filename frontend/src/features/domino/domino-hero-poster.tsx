@@ -167,7 +167,7 @@ export function DominoHeroPoster() {
       </div>
 
       {/* Mobile: full phones paired with feature copy */}
-      <div className="md:hidden" style={{ borderTop: `1px solid ${LANDING.border}` }}>
+      <div className="md:hidden">
         <DominoLandingPhonePairs
           items={FEATURES.map(({ variant, activeTile, title, body }) => ({
             variant,
@@ -177,10 +177,7 @@ export function DominoHeroPoster() {
       </div>
 
       {/* Desktop: text-only feature grid */}
-      <div
-        className="hidden gap-0 px-5 pb-12 pt-8 md:grid md:grid-cols-3 md:gap-0 md:px-14 md:pb-[88px] md:pt-5"
-        style={{ borderTop: `1px solid ${LANDING.border}` }}
-      >
+      <div className="hidden gap-0 px-5 pb-12 pt-8 md:grid md:grid-cols-3 md:gap-0 md:px-14 md:pb-[88px] md:pt-5">
         {FEATURES.map(({ activeTile, title, body }, index) => (
           <div
             key={title}
@@ -214,10 +211,7 @@ export function DominoHeroPoster() {
 
       <div
         className="flex flex-col items-center justify-between gap-5 px-5 py-7 sm:flex-row sm:items-center md:px-14"
-        style={{
-          borderTop: `1px solid ${LANDING.border}`,
-          paddingBottom: 'max(28px, env(safe-area-inset-bottom))',
-        }}
+        style={{ paddingBottom: 'max(28px, env(safe-area-inset-bottom))' }}
       >
         <span style={{ fontSize: 14, color: LANDING.footer }}>© 2026 daily labs</span>
         <div className="flex items-center gap-6 sm:gap-7">

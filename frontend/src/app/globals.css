@@ -421,10 +421,6 @@
   padding: 28px 20px;
 }
 
-.landing-phone-pair--bordered {
-  border-top: 1px solid #ede6dd;
-}
-
 .landing-phone-pair-copy {
   display: flex;
   width: 100%;
